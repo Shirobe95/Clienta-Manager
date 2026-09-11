@@ -1,0 +1,255 @@
+import { Link } from 'react-router-dom';
+import { Cabecera } from '../components/Cabecera';
+import { GraficoBarras } from '../components/GraficoBarras';
+import type { SerieGrafico } from '../components/GraficoBarras';
+import { Icono } from '../components/Icono';
+import { Insignia, Kpi, Panel, Vacio } from '../components/ui';
+import { diasEntre, hoy } from '../lib/format';
+import { estadosCorte, estadosMovimiento, tiposSeguimiento } from '../lib/labels';
+import {
+  calcularKpis,
+  cobrosPorVencer,
+  estadoCalculado,
+  rankingClientes,
+  seguimientosProximos,
+  serieMensual,
+  totalConImpuestos,
+} from '../lib/metrics';
+import { useFormato } from '../state/formato';
+import { useAlmacen } from '../state/store';
+
+const SERIES: SerieGrafico[] = [
+  { clave: 'cobrado', texto: 'Cobrado', color: 'var(--serie-cobrado)' },
+  { clave: 'pendiente', texto: 'Pendiente', color: 'var(--serie-pendiente)' },
+  { clave: 'gastos', texto: 'Gastos', color: 'var(--serie-gastos)' },
+];
+
+export function Dashboard() {
+  const { db } = useAlmacen();
+  const { dinero, fecha: fmtFecha, moneda, locale } = useFormato();
+  const fecha = hoy();
+
+  const kpis = calcularKpis(db, fecha);
+  const serie = serieMensual(db, fecha, 12, locale);
+  const vencimientos = cobrosPorVencer(db, fecha, 30).slice(0, 6);
+  const agenda = seguimientosProximos(db, fecha, 45).slice(0, 6);
+  const ranking = rankingClientes(db, fecha, 5);
+  const cortesVivos = db.cortes
+    .filter((c) => c.estado === 'en_curso' || c.estado === 'en_revision')
+    .sort((a, b) => (a.fechaObjetivo ?? '9999').localeCompare(b.fechaObjetivo ?? '9999'))
+    .slice(0, 6);
+
+  const vacio = db.clientes.length === 0 && db.movimientos.length === 0;
+  const anio = fecha.slice(0, 4);
+
+  return (
+    <>
+      <Cabecera
+        titulo="Panel"
+        subtitulo={`Vista general · ${new Intl.DateTimeFormat(locale, { dateStyle: 'full' }).format(new Date())}`}
+        acciones={
+          <Link to="/cobros" className="btn primario">
+            <Icono nombre="cobros" />
+            Ir a cobros
+          </Link>
+        }
+      />
+
+      <div className="pagina">
+        {vacio ? (
+          <Panel>
+            <Vacio
+              icono="rayo"
+              titulo="Todavía no hay datos"
+              descripcion="Crea tu primer cliente o carga el juego de datos de ejemplo desde Ajustes para ver cómo queda el panel."
+              accion={
+                <div className="fila">
+                  <Link to="/clientes" className="btn primario">
+                    <Icono nombre="mas" />
+                    Nuevo cliente
+                  </Link>
+                  <Link to="/ajustes" className="btn">
+                    Cargar ejemplo
+                  </Link>
+                </div>
+              }
+            />
+          </Panel>
+        ) : null}
+
+        <div className="grid grid-kpi">
+          <Kpi
+            etiqueta="Cobrado este mes"
+            valor={dinero(kpis.cobradoMes)}
+            tono="acento"
+            pie={`${kpis.clientesActivos} clientes activos`}
+          />
+          <Kpi
+            etiqueta={`Cobrado ${anio}`}
+            valor={dinero(kpis.cobradoAnio)}
+            tono="ok"
+            progreso={kpis.progresoObjetivo ?? undefined}
+            pie={
+              kpis.progresoObjetivo !== null
+                ? `${Math.round(kpis.progresoObjetivo)}% del objetivo anual`
+                : `Neto ${dinero(kpis.netoAnio)} tras gastos`
+            }
+          />
+          <Kpi
+            etiqueta="Pendiente de cobro"
+            valor={dinero(kpis.pendiente)}
+            tono={kpis.pendiente > 0 ? 'aviso' : 'neutro'}
+            pie={`${kpis.proyectosActivos} proyectos en marcha`}
+          />
+          <Kpi
+            etiqueta="Vencido"
+            valor={dinero(kpis.vencido)}
+            tono={kpis.vencido > 0 ? 'critico' : 'neutro'}
+            pie={
+              kpis.numVencidos > 0
+                ? `${kpis.numVencidos} factura${kpis.numVencidos === 1 ? '' : 's'} fuera de plazo`
+                : 'Todo al día'
+            }
+          />
+        </div>
+
+        <Panel titulo="Evolución de los últimos 12 meses" icono="metricas">
+          <GraficoBarras datos={serie} series={SERIES} moneda={moneda} locale={locale} />
+        </Panel>
+
+        <div className="grid grid-2">
+          <Panel
+            titulo="Próximos vencimientos"
+            icono="reloj"
+            sinRelleno
+            acciones={
+              <Link to="/cobros" className="btn discreto pequeno">
+                Ver todo
+              </Link>
+            }
+          >
+            {vencimientos.length === 0 ? (
+              <Vacio titulo="Sin vencimientos en 30 días" icono="check" />
+            ) : (
+              <div className="lista">
+                {vencimientos.map((m) => {
+                  const estado = estadoCalculado(m, fecha);
+                  const dias = m.fechaVencimiento ? diasEntre(fecha, m.fechaVencimiento) : 0;
+                  const cliente = db.clientes.find((c) => c.id === m.clienteId);
+                  return (
+                    <div className="lista-item" key={m.id}>
+                      <div className="crecer">
+                        <div className="titulo recorte">{m.concepto}</div>
+                        <div className="meta recorte">
+                          {cliente?.nombre ?? 'Sin cliente'} · vence {fmtFecha(m.fechaVencimiento)}
+                          {estado === 'vencido' ? ` · ${Math.abs(dias)} días de retraso` : ` · en ${dias} días`}
+                        </div>
+                      </div>
+                      <span className="num">{dinero(totalConImpuestos(m))}</span>
+                      <Insignia {...insignia(estado)} />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Panel>
+
+          <Panel
+            titulo="Agenda de los próximos 45 días"
+            icono="agenda"
+            sinRelleno
+            acciones={
+              <Link to="/agenda" className="btn discreto pequeno">
+                Ver todo
+              </Link>
+            }
+          >
+            {agenda.length === 0 ? (
+              <Vacio titulo="Nada previsto" icono="agenda" />
+            ) : (
+              <div className="lista">
+                {agenda.map((s) => {
+                  const cliente = db.clientes.find((c) => c.id === s.clienteId);
+                  const tipo = tiposSeguimiento.de(s.tipo);
+                  return (
+                    <div className="lista-item" key={s.id}>
+                      <div className="crecer">
+                        <div className="titulo recorte">{s.titulo}</div>
+                        <div className="meta recorte">
+                          {cliente?.nombre ?? '—'} · {fmtFecha(s.fechaPrevista)}
+                        </div>
+                      </div>
+                      <Insignia texto={tipo.texto} tono={tipo.tono} />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Panel>
+        </div>
+
+        <div className="grid grid-2">
+          <Panel titulo={`Clientes por facturación (${anio})`} icono="clientes" sinRelleno>
+            {ranking.length === 0 ? (
+              <Vacio titulo="Sin movimientos registrados" icono="cobros" />
+            ) : (
+              <div className="tabla-envoltorio">
+                <table className="tabla">
+                  <thead>
+                    <tr>
+                      <th>Cliente</th>
+                      <th className="num">Cobrado</th>
+                      <th className="num">Pendiente</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ranking.map((f) => (
+                      <tr key={f.clienteId}>
+                        <td>
+                          <Link to={`/clientes/${f.clienteId}`}>{f.nombre}</Link>
+                        </td>
+                        <td className="num">{dinero(f.cobrado)}</td>
+                        <td className="num texto-2">{dinero(f.pendiente)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Panel>
+
+          <Panel titulo="Cortes en curso" icono="brujula" sinRelleno>
+            {cortesVivos.length === 0 ? (
+              <Vacio titulo="Ningún corte abierto" icono="brujula" />
+            ) : (
+              <div className="lista">
+                {cortesVivos.map((c) => {
+                  const proyecto = db.proyectos.find((p) => p.id === c.proyectoId);
+                  const etiqueta = estadosCorte.de(c.estado);
+                  return (
+                    <Link className="lista-item" key={c.id} to={`/proyectos/${c.proyectoId}`}>
+                      <span className="etiqueta mono">{c.codigo}</span>
+                      <div className="crecer">
+                        <div className="titulo recorte">{c.titulo}</div>
+                        <div className="meta recorte">
+                          {proyecto?.nombre ?? '—'}
+                          {c.fechaObjetivo ? ` · objetivo ${fmtFecha(c.fechaObjetivo)}` : ''}
+                        </div>
+                      </div>
+                      <Insignia texto={etiqueta.texto} tono={etiqueta.tono} />
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </Panel>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function insignia(estado: ReturnType<typeof estadoCalculado>) {
+  const e = estadosMovimiento.de(estado);
+  return { texto: e.texto, tono: e.tono };
+}
