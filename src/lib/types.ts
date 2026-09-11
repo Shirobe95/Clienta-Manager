@@ -8,6 +8,25 @@ export type ISODateTime = string;
 
 export type EstadoCliente = 'potencial' | 'activo' | 'pausado' | 'archivado';
 
+/**
+ * Cuota mensual de un cliente. Es opcional: solo la tienen los clientes con
+ * un acuerdo recurrente. Cada mes genera un cobro, no un cargo automatico.
+ */
+export interface Suscripcion {
+  activa: boolean;
+  concepto: string;
+  /** Base imponible de la cuota. */
+  importe: number;
+  ivaPct: number;
+  irpfPct: number;
+  /** Dia del mes en el que toca emitir, de 1 a 28. */
+  diaCobro: number;
+  inicio: ISODate;
+  /** Fecha de baja, si el acuerdo tiene fin. */
+  fin?: ISODate;
+  proyectoId?: ID;
+}
+
 export interface Cliente {
   id: ID;
   nombre: string;
@@ -19,6 +38,7 @@ export interface Cliente {
   tarifaHora?: number;
   etiquetas: string[];
   notas?: string;
+  suscripcion?: Suscripcion;
   creadoEn: ISODateTime;
 }
 
@@ -74,6 +94,8 @@ export interface Corte {
   fechaObjetivo?: ISODate;
   /** Fecha en la que se entrego de verdad. Se rellena sola al pasar a revision. */
   fechaEntrega?: ISODate;
+  /** Corte del que nace esta ampliacion de alcance, si lo hay. */
+  origenCorteId?: ID;
   importe?: number;
   criterios: CriterioAceptacion[];
   notas?: string;
@@ -140,6 +162,8 @@ export interface Movimiento {
   fechaPago?: ISODate;
   metodo?: string;
   numeroFactura?: string;
+  /** Mes facturado (YYYY-MM) cuando el cobro sale de una cuota mensual. */
+  periodo?: string;
   notas?: string;
   creadoEn: ISODateTime;
 }

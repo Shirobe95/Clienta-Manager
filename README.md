@@ -6,11 +6,15 @@ trabajo freelance. Todo vive en el navegador (local-first), sin servidor ni cuen
 ## Qué resuelve
 
 - **Clientes**: ficha con contacto, estado, tarifa, etiquetas, notas y su historial económico.
+- **Mensualidades**: opcionales, cliente a cliente. Cada mes vencido aparece como cuota por emitir y se
+  convierte en un cobro numerado con un clic.
 - **Proyectos**: visión general, modelo de facturación, presupuesto, enlaces y avance real.
 - **Cortes**: bloques de trabajo acotados, con objetivo, *fuera de alcance*, criterios de aceptación,
   precio y fecha de entrega real. Son la unidad de venta: se cobra por módulo entregado.
 - **Plantillas**: catálogo de módulos reutilizables con precio y criterios, para montar un proyecto
   entero o añadir cortes sueltos sin reescribirlos.
+- **Ampliaciones de alcance**: lo que quedó fuera del alcance de un corte se convierte en un corte
+  nuevo presupuestado, con su origen registrado, en vez de regalarse.
 - **Decisiones**: registro tipo ADR ligero (contexto, decisión, alternativas, consecuencias).
 - **Cobros y pagos**: base imponible, IVA/IRPF, vencimientos, estado y vínculo con proyecto y corte.
 - **Facturación**: serie correlativa configurable, aviso de huecos y duplicados, exportación a CSV
@@ -40,7 +44,7 @@ Para ver el panel con contenido: **Ajustes → Cargar datos de ejemplo**.
 
 ```
 src/
-  lib/        modelo de datos, formato, metricas, facturacion, entregas, persistencia, ejemplo
+  lib/        modelo, formato, metricas, facturacion, entregas, suscripciones, persistencia, ejemplo
   state/      contexto de React sobre el documento local (CRUD + borrado en cascada)
   components/ sistema de UI (paneles, KPIs, tablas, formularios, grafico)
   pages/      una vista por seccion del panel
@@ -66,6 +70,10 @@ Decisiones que conviene conocer antes de tocar el código:
   números ya emitidos de la serie y toma el mayor más uno: así no se desincroniza al importar una copia
   ni al borrar un movimiento. Un corte se factura desde el panel o desde su proyecto, y solo entonces se
   reserva el número: nunca se crea un cobro sin que tú lo confirmes.
+- **Las mensualidades no se cobran solas.** `periodosPendientes` deduce los meses vencidos comparando el
+  inicio del acuerdo con los cobros que ya llevan ese `periodo`, así que los movimientos emitidos son la
+  fuente de verdad y no hay contador que se desincronice. La app te enseña lo que toca emitir; emites tú.
+  Emitir una tanda numera en cadena, de modo que salga correlativa.
 - **La fecha de entrega se apunta sola, pero no manda.** Pasar un corte a revisión o aceptado escribe la
   fecha de entrega si está vacía, y la retira si el corte vuelve atrás; una fecha puesta a mano nunca se
   pisa. La puntualidad solo cuenta los cortes que tienen fecha objetivo *y* fecha de entrega.
@@ -88,5 +96,6 @@ Borrar los datos del sitio en el navegador borra también el contenido de la apl
 
 `npm test` cubre la lógica de negocio: métricas (impuestos, estados derivados, KPIs, serie mensual,
 ranking, vencimientos, avance), facturación (numeración, huecos y duplicados, cortes sin facturar, CSV y
-recordatorios) y entregas (fecha automática, puntualidad, cuadre de presupuesto y plantillas). La UI no
-tiene tests automatizados todavía; se verifica a mano en el navegador.
+recordatorios), entregas (fecha automática, puntualidad, cuadre de presupuesto, plantillas y
+ampliaciones) y suscripciones (vigencia, periodos pendientes, generación de cuotas y recurrente
+mensual). La UI no tiene tests automatizados todavía; se verifica a mano en el navegador.

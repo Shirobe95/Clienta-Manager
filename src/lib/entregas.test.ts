@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   ajustarFechaEntrega,
+  ampliacionDesdeCorte,
   corteDesdeModulo,
   cortesDesdePlantilla,
   cuadreProyecto,
   estaEntregado,
   importeDePlantilla,
+  resumenAmpliaciones,
   resumenEntregas,
 } from './entregas';
 import { baseDatosVacia } from './types';
@@ -191,5 +193,47 @@ describe('plantillas', () => {
     const cortes = cortesDesdePlantilla(plantilla, 'p9', 5);
     expect(cortes.map((c) => c.orden)).toEqual([5, 6]);
     expect(new Set(cortes.map((c) => c.id)).size).toBe(2);
+  });
+});
+
+describe('ampliaciones', () => {
+  it('la ampliación hereda el fuera de alcance como objetivo y recuerda su origen', () => {
+    const origen = corte({
+      id: 'c2',
+      codigo: 'C2',
+      titulo: 'Panel',
+      fueraDeAlcance: 'Edición masiva por CSV.',
+    });
+    const ampliacion = ampliacionDesdeCorte(origen, 4);
+    expect(ampliacion).toMatchObject({
+      codigo: 'C2+',
+      titulo: 'Ampliación de C2',
+      objetivo: 'Edición masiva por CSV.',
+      origenCorteId: 'c2',
+      estado: 'planificado',
+      orden: 4,
+    });
+    expect(ampliacion.importe).toBeUndefined();
+  });
+
+  it('numera la ampliación cuando el código ya está cogido', () => {
+    const origen = corte({ id: 'c2', codigo: 'C2' });
+    expect(ampliacionDesdeCorte(origen, 4, ['C1', 'C2']).codigo).toBe('C2+');
+    expect(ampliacionDesdeCorte(origen, 5, ['C2', 'C2+']).codigo).toBe('C2+2');
+    expect(ampliacionDesdeCorte(origen, 6, ['C2', 'C2+', 'C2+2']).codigo).toBe('C2+3');
+  });
+
+  it('suma solo los cortes que son ampliación', () => {
+    const resumen = resumenAmpliaciones([
+      corte({ id: 'a', importe: 1000 }),
+      corte({ id: 'b', importe: 300, origenCorteId: 'a' }),
+      corte({ id: 'c', importe: 200, origenCorteId: 'a' }),
+      corte({ id: 'd', origenCorteId: 'a' }),
+    ]);
+    expect(resumen).toEqual({ cantidad: 3, importe: 500 });
+  });
+
+  it('sin ampliaciones no suma nada', () => {
+    expect(resumenAmpliaciones([corte({ id: 'a', importe: 1000 })])).toEqual({ cantidad: 0, importe: 0 });
   });
 });

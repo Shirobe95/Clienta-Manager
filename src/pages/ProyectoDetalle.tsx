@@ -7,7 +7,13 @@ import { TablaMovimientos } from '../components/TablaMovimientos';
 import { FormCorte, FormDecision, FormMovimiento, FormProyecto, ModalPlantilla } from '../components/formularios';
 import { BotonBorrar, Insignia, Kpi, Panel, Pestanas, Vacio } from '../components/ui';
 import { estadosCorte, estadosDecision, estadosProyecto, modelosFacturacion } from '../lib/labels';
-import { ajustarFechaEntrega, corteDesdeModulo, cuadreProyecto } from '../lib/entregas';
+import {
+  ajustarFechaEntrega,
+  ampliacionDesdeCorte,
+  corteDesdeModulo,
+  cuadreProyecto,
+  resumenAmpliaciones,
+} from '../lib/entregas';
 import { conceptoDeCorte, cortesSinFacturar } from '../lib/facturacion';
 import { progresoProyecto, totalConImpuestos } from '../lib/metrics';
 import { useFormato } from '../state/formato';
@@ -23,6 +29,7 @@ export function ProyectoDetalle() {
   const [pestana, setPestana] = useState<Pestana>('vision');
   const [formProyecto, setFormProyecto] = useState<Proyecto | null>(null);
   const [formCorte, setFormCorte] = useState<Corte | 'nuevo' | null>(null);
+  const [ampliando, setAmpliando] = useState<Corte | null>(null);
   const [formDecision, setFormDecision] = useState<Decision | 'nuevo' | null>(null);
   const [formMovimiento, setFormMovimiento] = useState<Movimiento | 'nuevo' | null>(null);
   const [contextoMovimiento, setContextoMovimiento] = useState<{ corteId?: string; concepto?: string; importe?: number }>({});
@@ -50,6 +57,7 @@ export function ProyectoDetalle() {
     .reduce((suma, m) => suma + totalConImpuestos(m), 0);
   const progreso = progresoProyecto(cortes);
   const cuadre = cuadreProyecto(db, proyecto);
+  const ampliaciones = resumenAmpliaciones(cortes);
   const fecha = hoy();
 
   /** Guardar un corte apunta o retira su fecha de entrega segun el estado. */
@@ -205,6 +213,16 @@ export function ProyectoDetalle() {
             titulo="Cortes del proyecto"
             icono="brujula"
             sinRelleno
+            pie={
+              ampliaciones.cantidad > 0 ? (
+                <div className="panel-cuerpo pequeno texto-3" style={{ borderTop: '1px solid var(--borde)' }}>
+                  {ampliaciones.cantidad}{' '}
+                  {ampliaciones.cantidad === 1 ? 'ampliación' : 'ampliaciones'} de alcance ·{' '}
+                  <strong className="num texto-2">{dinero(ampliaciones.importe)}</strong> de trabajo extra
+                  presupuestado
+                </div>
+              ) : undefined
+            }
             acciones={
               <>
                 <button
@@ -246,6 +264,12 @@ export function ProyectoDetalle() {
                           <Insignia texto={ec.texto} tono={ec.tono} />
                           {c.importe ? <span className="etiqueta">{dinero(c.importe)}</span> : null}
                           {idsSinFacturar.has(c.id) && <Insignia texto="Sin facturar" tono="aviso" />}
+                          {c.origenCorteId && (
+                            <Insignia
+                              texto={`Amplía ${cortes.find((x) => x.id === c.origenCorteId)?.codigo ?? '—'}`}
+                              tono="info"
+                            />
+                          )}
                         </div>
                         {c.objetivo && <div className="meta pre-linea" style={{ marginTop: 4 }}>{c.objetivo}</div>}
                         {c.fueraDeAlcance && (
@@ -293,6 +317,16 @@ export function ProyectoDetalle() {
                         </div>
                       </div>
                       <div className="fila" style={{ gap: 4, flexWrap: 'nowrap' }}>
+                        {c.fueraDeAlcance && (
+                          <button
+                            type="button"
+                            className="btn pequeno"
+                            title="Convertir el fuera de alcance en un corte nuevo"
+                            onClick={() => setAmpliando(c)}
+                          >
+                            <Icono nombre="rayo" />
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="btn pequeno"
@@ -414,6 +448,20 @@ export function ProyectoDetalle() {
             );
             setAnadirDesdePlantilla(false);
             setPestana('cortes');
+          }}
+        />
+      )}
+
+      {ampliando && (
+        <FormCorte
+          inicial={ampliacionDesdeCorte(ampliando, cortes.length + 1, cortes.map((c) => c.codigo))}
+          tituloModal={`Ampliar el alcance de ${ampliando.codigo}`}
+          proyectoId={proyecto.id}
+          siguienteOrden={cortes.length + 1}
+          onCerrar={() => setAmpliando(null)}
+          onGuardar={(c) => {
+            guardarCorte(c);
+            setAmpliando(null);
           }}
         />
       )}

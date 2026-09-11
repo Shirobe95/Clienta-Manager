@@ -21,6 +21,8 @@ import { useAlmacen } from '../state/store';
 import { FormMovimiento } from '../components/formularios';
 import { conceptoDeCorte, cortesSinFacturar } from '../lib/facturacion';
 import { resumenEntregas } from '../lib/entregas';
+import { mensualidadesPendientes, movimientoDeMensualidad, recurrenteMensual } from '../lib/suscripciones';
+import type { MensualidadPendiente } from '../lib/suscripciones';
 import type { CorteSinFacturar } from '../lib/facturacion';
 
 const SERIES: SerieGrafico[] = [
@@ -42,6 +44,21 @@ export function Dashboard() {
   const ranking = rankingClientes(db, fecha, 5);
   const sinFacturar = cortesSinFacturar(db);
   const entregas = resumenEntregas(db, fecha);
+  const mensualidades = mensualidadesPendientes(db, fecha);
+  const recurrente = recurrenteMensual(db, fecha);
+
+  /**
+   * Emite las cuotas en cadena: cada movimiento se numera contando el anterior,
+   * para que una tanda salga correlativa y no repita numero.
+   */
+  const emitirMensualidades = (lista: MensualidadPendiente[]) => {
+    let acumulados = db.movimientos;
+    for (const pendiente of lista) {
+      const movimiento = movimientoDeMensualidad(pendiente.cliente, pendiente.periodo, acumulados, db.ajustes);
+      acumulados = [...acumulados, movimiento];
+      guardar('movimientos', movimiento);
+    }
+  };
   const cortesVivos = db.cortes
     .filter((c) => c.estado === 'en_curso' || c.estado === 'en_revision')
     .sort((a, b) => (a.fechaObjetivo ?? '9999').localeCompare(b.fechaObjetivo ?? '9999'))
@@ -109,6 +126,14 @@ export function Dashboard() {
             tono={kpis.pendiente > 0 ? 'aviso' : 'neutro'}
             pie={`${kpis.proyectosActivos} proyectos en marcha`}
           />
+          {recurrente.clientes > 0 && (
+            <Kpi
+              etiqueta="Recurrente mensual"
+              valor={dinero(recurrente.totalMensual)}
+              tono="acento"
+              pie={`${recurrente.clientes} cliente${recurrente.clientes === 1 ? '' : 's'} con mensualidad`}
+            />
+          )}
           <Kpi
             etiqueta="Vencido"
             valor={dinero(kpis.vencido)}
@@ -120,6 +145,40 @@ export function Dashboard() {
             }
           />
         </div>
+
+        {mensualidades.length > 0 && (
+          <Panel
+            titulo="Mensualidades por emitir"
+            icono="reloj"
+            sinRelleno
+            acciones={
+              <button type="button" className="btn pequeno" onClick={() => emitirMensualidades(mensualidades)}>
+                <Icono nombre="check" />
+                Emitir todas ({mensualidades.length})
+              </button>
+            }
+          >
+            <div className="lista">
+              {mensualidades.map((m) => (
+                <div className="lista-item" key={`${m.cliente.id}-${m.periodo}`}>
+                  <span className="etiqueta mono">{m.periodo}</span>
+                  <div className="crecer">
+                    <div className="titulo recorte">
+                      <Link to={`/clientes/${m.cliente.id}`}>{m.cliente.nombre}</Link>
+                    </div>
+                    <div className="meta recorte">
+                      {m.cliente.suscripcion?.concepto} · emisión {fmtFecha(m.emision)}
+                    </div>
+                  </div>
+                  <span className="num">{dinero(m.total)}</span>
+                  <button type="button" className="btn pequeno" onClick={() => emitirMensualidades([m])}>
+                    Emitir
+                  </button>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        )}
 
         {sinFacturar.length > 0 && (
           <Panel

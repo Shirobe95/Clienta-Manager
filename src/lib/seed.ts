@@ -24,6 +24,15 @@ export function datosEjemplo(): BaseDatos {
       tarifaHora: 45,
       etiquetas: ['woocommerce', 'retainer'],
       notas: 'Tienda WooCommerce con inventario en Excel. Objetivo: centralizar catálogo y costes.',
+      suscripcion: {
+        activa: true,
+        concepto: 'Soporte y mantenimiento',
+        importe: 250,
+        ivaPct: 21,
+        irpfPct: 0,
+        diaCobro: 1,
+        inicio: `${mesPasado(1).slice(0, 7)}-01`,
+      },
       creadoEn: ahora,
     },
     {
@@ -68,7 +77,7 @@ export function datosEjemplo(): BaseDatos {
         'Objetivo: sustituir el Excel de inventario por un panel propio con datos fiables.\n\nDentro de alcance: catálogo, stock, costes, precios y sincronización de lectura con WooCommerce.\n\nFuera de alcance (por ahora): facturación, TPV y gestión de proveedores.',
       estado: 'activo',
       modelo: 'fijo',
-      presupuesto: 7200,
+      presupuesto: 7900,
       fechaInicio: mesPasado(4),
       fechaEntrega: sumarDias(h, 45),
       enlaces: [
@@ -192,6 +201,23 @@ export function datosEjemplo(): BaseDatos {
         { id: 'cri_11', texto: 'Contenido editable por el cliente', hecho: true },
       ],
       orden: 2,
+      creadoEn: ahora,
+    },
+    {
+      id: 'cor_demo_7',
+      proyectoId: 'pro_demo_1',
+      codigo: 'C2+',
+      titulo: 'Ampliación de C2 — Edición masiva por CSV',
+      objetivo: 'Edición masiva por CSV.',
+      estado: 'planificado',
+      fechaObjetivo: sumarDias(h, 30),
+      importe: 700,
+      criterios: [
+        { id: 'cri_14', texto: 'Plantilla de CSV documentada', hecho: false },
+        { id: 'cri_15', texto: 'Preview de la importación antes de aplicar', hecho: false },
+      ],
+      origenCorteId: 'cor_demo_2',
+      orden: 4,
       creadoEn: ahora,
     },
     {

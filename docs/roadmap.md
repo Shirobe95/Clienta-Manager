@@ -1,6 +1,6 @@
 # Roadmap
 
-Estado: **C1, C2 y C3 entregados**. Lo demás son propuestas, no compromisos.
+Estado: **C1, C2, C3 y C4 entregados**. Lo demás son propuestas, no compromisos.
 
 ## C1 — Panel base (hecho)
 
@@ -32,13 +32,24 @@ es la entrega, no el tiempo.
 - Métricas de entrega en el panel: módulos aceptados en el año, importe medio por módulo y porcentaje
   de entregas dentro de plazo.
 
-## C4 — Continuidad y multi-dispositivo
+## C4 — Ampliaciones y mensualidades (hecho)
+
+- Ampliaciones de alcance: lo que un corte deja *fuera de alcance* se convierte en un corte nuevo con
+  un clic, heredando ese texto como objetivo y guardando de qué corte nace. El proyecto muestra cuánto
+  trabajo extra se ha presupuestado así. Varias ampliaciones del mismo corte se numeran: C2+, C2+2.
+- Mensualidades opcionales por cliente: concepto, importe, impuestos, día de cobro, inicio y baja.
+  No todos los clientes la tienen, y se puede pausar sin borrarla.
+- Cuotas por emitir en el panel y en la ficha del cliente, con emisión individual o en tanda. La
+  numeración de una tanda sale correlativa.
+- KPI de recurrente mensual, visible solo si hay clientes con cuota.
+
+## C5 — Continuidad y multi-dispositivo
 
 - Adaptador de `AlmacenDatos` contra Supabase, con el local como caché.
 - Autenticación y sincronización con resolución de conflictos por marca de tiempo.
 - Copia automática a Google Drive.
 
-## C5 — Portal y automatización
+## C6 — Portal y automatización
 
 - Vista pública por proyecto para el cliente: estado de cortes y criterios aceptados.
 - Recordatorios por correo de vencimientos y renovaciones.
@@ -50,6 +61,4 @@ es la entrega, no el tiempo.
 - Línea de tiempo por cliente, mezclando cobros, cortes y decisiones.
 - Campo de moneda por cliente, para clientes fuera de la zona euro.
 - Etiquetas de riesgo: cliente que paga tarde de forma recurrente.
-- Ampliaciones de alcance: convertir una petición que cae fuera del alcance de un corte en un módulo
-  nuevo presupuestado, sin regalar trabajo.
 - Control de horas y rentabilidad por tiempo: **descartado por ahora**, no encaja con cobrar por módulo.

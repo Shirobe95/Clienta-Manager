@@ -137,3 +137,43 @@ export function cortesDesdePlantilla(plantilla: Plantilla, proyectoId: ID, orden
   const creadoEn = new Date().toISOString();
   return plantilla.modulos.map((modulo, i) => corteDesdeModulo(modulo, proyectoId, ordenInicial + i, creadoEn));
 }
+
+/* ---------- Ampliaciones de alcance ---------- */
+
+/**
+ * Corte nuevo a partir de lo que quedo fuera del alcance de otro. Sirve para
+ * cobrar una peticion extra en vez de regalarla, dejando la trazabilidad.
+ * Si ya hay una ampliacion con ese codigo, se numera: C2+, C2+2, C2+3.
+ */
+export function ampliacionDesdeCorte(origen: Corte, orden: number, codigosUsados: string[] = []): Corte {
+  const usados = new Set(codigosUsados);
+  let codigo = `${origen.codigo}+`;
+  for (let n = 2; usados.has(codigo); n += 1) codigo = `${origen.codigo}+${n}`;
+
+  return {
+    id: nuevoId('cor'),
+    proyectoId: origen.proyectoId,
+    codigo,
+    titulo: `Ampliación de ${origen.codigo}`,
+    objetivo: origen.fueraDeAlcance,
+    estado: 'planificado',
+    criterios: [],
+    origenCorteId: origen.id,
+    orden,
+    creadoEn: new Date().toISOString(),
+  };
+}
+
+export interface ResumenAmpliaciones {
+  cantidad: number;
+  importe: number;
+}
+
+/** Cuanto suman las ampliaciones de un proyecto: el alcance extra que si se cobra. */
+export function resumenAmpliaciones(cortes: Corte[]): ResumenAmpliaciones {
+  const ampliaciones = cortes.filter((c) => c.origenCorteId);
+  return {
+    cantidad: ampliaciones.length,
+    importe: Math.round(ampliaciones.reduce((suma, c) => suma + (c.importe ?? 0), 0) * 100) / 100,
+  };
+}

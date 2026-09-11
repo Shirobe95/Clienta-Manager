@@ -144,6 +144,8 @@ export function Clientes() {
       {(creando || editando) && (
         <FormCliente
           inicial={editando ?? undefined}
+          proyectos={db.proyectos}
+          ajustes={db.ajustes}
           onCerrar={() => {
             setCreando(false);
             setEditando(null);

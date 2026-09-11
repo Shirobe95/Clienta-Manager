@@ -29,6 +29,7 @@ import type {
   Plantilla,
   Proyecto,
   Seguimiento,
+  Suscripcion,
 } from '../lib/types';
 
 function opciones<T extends string>(m: { lista: { valor: T; texto: string }[] }) {
@@ -90,10 +91,14 @@ function ModalFormulario({
 
 export function FormCliente({
   inicial,
+  proyectos,
+  ajustes,
   onGuardar,
   onCerrar,
 }: {
   inicial?: Cliente;
+  proyectos: Proyecto[];
+  ajustes: Ajustes;
   onGuardar: (c: Cliente) => void;
   onCerrar: () => void;
 }) {
@@ -151,7 +156,130 @@ export function FormCliente({
       <Campo etiqueta="Notas" anchoTotal>
         <textarea value={c.notas ?? ''} onChange={(e) => setC({ ...c, notas: e.target.value })} />
       </Campo>
+
+      <EditorSuscripcion
+        suscripcion={c.suscripcion}
+        proyectos={proyectos.filter((p) => p.clienteId === c.id)}
+        ajustes={ajustes}
+        onChange={(suscripcion) => setC({ ...c, suscripcion })}
+      />
     </ModalFormulario>
+  );
+}
+
+/** Bloque de mensualidad: plegado salvo que el cliente tenga cuota. */
+function EditorSuscripcion({
+  suscripcion,
+  proyectos,
+  ajustes,
+  onChange,
+}: {
+  suscripcion?: Suscripcion;
+  proyectos: Proyecto[];
+  ajustes: Ajustes;
+  onChange: (s?: Suscripcion) => void;
+}) {
+  const activar = (activar: boolean) => {
+    if (!activar) {
+      onChange(undefined);
+      return;
+    }
+    onChange(
+      suscripcion ?? {
+        activa: true,
+        concepto: 'Cuota mensual',
+        importe: 0,
+        ivaPct: ajustes.ivaPorDefecto,
+        irpfPct: ajustes.irpfPorDefecto,
+        diaCobro: 1,
+        inicio: hoy(),
+      },
+    );
+  };
+
+  const cambiar = (cambios: Partial<Suscripcion>) => onChange({ ...suscripcion!, ...cambios });
+
+  return (
+    <div className="campo ancho-total">
+      <label className="fila" style={{ gap: 8, cursor: 'pointer' }}>
+        <input type="checkbox" checked={Boolean(suscripcion)} onChange={(e) => activar(e.target.checked)} />
+        <span style={{ fontSize: 13 }}>Este cliente paga una mensualidad</span>
+      </label>
+
+      {suscripcion && (
+        <div className="panel" style={{ padding: 14, marginTop: 4 }}>
+          <div className="form-grid">
+            <Campo etiqueta="Concepto" anchoTotal>
+              <input value={suscripcion.concepto} onChange={(e) => cambiar({ concepto: e.target.value })} />
+            </Campo>
+            <Campo etiqueta="Importe mensual" pista="Base imponible">
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={suscripcion.importe}
+                onChange={(e) => cambiar({ importe: Number(e.target.value) })}
+              />
+            </Campo>
+            <Campo etiqueta="IVA %">
+              <input
+                type="number"
+                step="0.01"
+                value={suscripcion.ivaPct}
+                onChange={(e) => cambiar({ ivaPct: Number(e.target.value) })}
+              />
+            </Campo>
+            <Campo etiqueta="IRPF %">
+              <input
+                type="number"
+                step="0.01"
+                value={suscripcion.irpfPct}
+                onChange={(e) => cambiar({ irpfPct: Number(e.target.value) })}
+              />
+            </Campo>
+            <Campo etiqueta="Día de cobro" pista="Del 1 al 28">
+              <input
+                type="number"
+                min={1}
+                max={28}
+                value={suscripcion.diaCobro}
+                onChange={(e) => cambiar({ diaCobro: Number(e.target.value) })}
+              />
+            </Campo>
+            <Campo etiqueta="Inicio">
+              <input type="date" value={suscripcion.inicio} onChange={(e) => cambiar({ inicio: e.target.value })} />
+            </Campo>
+            <Campo etiqueta="Baja" pista="Vacío si sigue en vigor">
+              <input
+                type="date"
+                value={suscripcion.fin ?? ''}
+                onChange={(e) => cambiar({ fin: e.target.value || undefined })}
+              />
+            </Campo>
+            <Campo etiqueta="Proyecto asociado">
+              <Selector
+                valor={suscripcion.proyectoId ?? ''}
+                opciones={[
+                  { valor: '', texto: 'Sin proyecto' },
+                  ...proyectos.map((p) => ({ valor: p.id, texto: p.nombre })),
+                ]}
+                onChange={(v) => cambiar({ proyectoId: v || undefined })}
+              />
+            </Campo>
+            <Campo etiqueta="Estado" pista="Pausarla deja de generar cuotas">
+              <Selector
+                valor={suscripcion.activa ? 'activa' : 'pausada'}
+                opciones={[
+                  { valor: 'activa', texto: 'Activa' },
+                  { valor: 'pausada', texto: 'Pausada' },
+                ]}
+                onChange={(v) => cambiar({ activa: v === 'activa' })}
+              />
+            </Campo>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -302,12 +430,15 @@ function EditorEnlaces({
 
 export function FormCorte({
   inicial,
+  tituloModal,
   proyectoId,
   siguienteOrden,
   onGuardar,
   onCerrar,
 }: {
   inicial?: Corte;
+  /** Sustituye al titulo por defecto: util al abrir un corte todavia sin guardar. */
+  tituloModal?: string;
   proyectoId: ID;
   siguienteOrden: number;
   onGuardar: (c: Corte) => void;
@@ -338,7 +469,7 @@ export function FormCorte({
 
   return (
     <ModalFormulario
-      titulo={inicial ? `Editar corte ${c.codigo}` : 'Nuevo corte'}
+      titulo={tituloModal ?? (inicial ? `Editar corte ${c.codigo}` : 'Nuevo corte')}
       onCerrar={onCerrar}
       onGuardar={() => {
         if (!c.titulo.trim()) return;

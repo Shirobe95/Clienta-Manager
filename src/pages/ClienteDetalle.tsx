@@ -9,6 +9,8 @@ import { BotonBorrar, Insignia, Kpi, Panel, Pestanas, Vacio } from '../component
 import { hoy, iniciales } from '../lib/format';
 import { estadosCliente, estadosProyecto, modelosFacturacion } from '../lib/labels';
 import { progresoProyecto, resumenCliente } from '../lib/metrics';
+import { totalConImpuestos } from '../lib/metrics';
+import { movimientoDeMensualidad, periodosPendientes, suscripcionVigente } from '../lib/suscripciones';
 import { useFormato } from '../state/formato';
 import { useAlmacen } from '../state/store';
 import type { Movimiento, Proyecto, Seguimiento } from '../lib/types';
@@ -38,6 +40,17 @@ export function ClienteDetalle() {
     .filter((s) => s.clienteId === cliente.id)
     .sort((a, b) => a.fechaPrevista.localeCompare(b.fechaPrevista));
   const estado = estadosCliente.de(cliente.estado);
+  const suscripcion = cliente.suscripcion;
+  const pendientesCuota = periodosPendientes(cliente, db.movimientos, fecha);
+
+  const emitirCuotas = (periodos: string[]) => {
+    let acumulados = db.movimientos;
+    for (const periodo of periodos) {
+      const movimiento = movimientoDeMensualidad(cliente, periodo, acumulados, db.ajustes);
+      acumulados = [...acumulados, movimiento];
+      guardar('movimientos', movimiento);
+    }
+  };
 
   return (
     <>
@@ -111,6 +124,39 @@ export function ClienteDetalle() {
                 <Dato etiqueta="Alta" valor={fmtFecha(cliente.creadoEn.slice(0, 10))} />
               </div>
             </Panel>
+            {suscripcion && (
+              <Panel
+                titulo="Mensualidad"
+                icono="reloj"
+                acciones={
+                  pendientesCuota.length > 0 ? (
+                    <button type="button" className="btn primario pequeno" onClick={() => emitirCuotas(pendientesCuota)}>
+                      Emitir {pendientesCuota.length}
+                    </button>
+                  ) : undefined
+                }
+              >
+                <div className="grid" style={{ gap: 10 }}>
+                  <div className="fila fila-sep">
+                    <span className="texto-3 pequeno">{suscripcion.concepto}</span>
+                    <Insignia
+                      texto={suscripcionVigente(suscripcion, fecha) ? 'Vigente' : 'Parada'}
+                      tono={suscripcionVigente(suscripcion, fecha) ? 'ok' : 'neutro'}
+                    />
+                  </div>
+                  <Dato etiqueta="Importe mensual" valor={dinero(totalConImpuestos(suscripcion))} />
+                  <Dato etiqueta="Día de cobro" valor={`Cada día ${suscripcion.diaCobro}`} />
+                  <Dato etiqueta="Inicio" valor={fmtFecha(suscripcion.inicio)} />
+                  <Dato etiqueta="Baja" valor={suscripcion.fin ? fmtFecha(suscripcion.fin) : undefined} />
+                  <div className="pequeno texto-3">
+                    {pendientesCuota.length === 0
+                      ? 'Todas las cuotas emitidas hasta hoy.'
+                      : `Pendientes de emitir: ${pendientesCuota.join(', ')}.`}
+                  </div>
+                </div>
+              </Panel>
+            )}
+
             <Panel titulo="Notas" icono="nota">
               {cliente.notas ? (
                 <p className="pre-linea texto-2">{cliente.notas}</p>
@@ -203,6 +249,8 @@ export function ClienteDetalle() {
       {editandoCliente && (
         <FormCliente
           inicial={cliente}
+          proyectos={db.proyectos}
+          ajustes={db.ajustes}
           onCerrar={() => setEditandoCliente(false)}
           onGuardar={(c) => {
             guardar('clientes', c);
