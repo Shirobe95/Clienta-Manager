@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Campo, Modal, Selector } from './ui';
 import { Icono } from './Icono';
+import { importeDePlantilla } from '../lib/entregas';
 import { siguienteNumeroFactura } from '../lib/facturacion';
 import { hoy, sumarDias } from '../lib/format';
 import { nuevoId } from '../lib/id';
@@ -23,7 +24,9 @@ import type {
   Decision,
   EstadoMovimiento,
   ID,
+  ModuloPlantilla,
   Movimiento,
+  Plantilla,
   Proyecto,
   Seguimiento,
 } from '../lib/types';
@@ -356,6 +359,13 @@ export function FormCorte({
           type="date"
           value={c.fechaObjetivo ?? ''}
           onChange={(e) => setC({ ...c, fechaObjetivo: e.target.value })}
+        />
+      </Campo>
+      <Campo etiqueta="Entregado el" pista="Se rellena solo al pasar a revisión">
+        <input
+          type="date"
+          value={c.fechaEntrega ?? ''}
+          onChange={(e) => setC({ ...c, fechaEntrega: e.target.value || undefined })}
         />
       </Campo>
       <Campo etiqueta="Importe asociado">
@@ -797,6 +807,298 @@ export function FormSeguimiento({
       <Campo etiqueta="Notas" anchoTotal>
         <textarea value={s.notas ?? ''} onChange={(e) => setS({ ...s, notas: e.target.value })} rows={3} />
       </Campo>
+    </ModalFormulario>
+  );
+}
+
+/* ---------- Plantilla ---------- */
+
+export function FormPlantilla({
+  inicial,
+  onGuardar,
+  onCerrar,
+}: {
+  inicial?: Plantilla;
+  onGuardar: (p: Plantilla) => void;
+  onCerrar: () => void;
+}) {
+  const [p, setP] = useState<Plantilla>(
+    () =>
+      inicial ?? {
+        id: nuevoId('pla'),
+        nombre: '',
+        modelo: 'fijo',
+        modulos: [],
+        creadoEn: new Date().toISOString(),
+      },
+  );
+
+  const cambiarModulo = (i: number, cambios: Partial<ModuloPlantilla>) =>
+    setP({ ...p, modulos: p.modulos.with(i, { ...p.modulos[i]!, ...cambios }) });
+
+  return (
+    <ModalFormulario
+      titulo={inicial ? 'Editar plantilla' : 'Nueva plantilla'}
+      onCerrar={onCerrar}
+      onGuardar={() => {
+        if (!p.nombre.trim()) return;
+        onGuardar(p);
+      }}
+    >
+      <Campo etiqueta="Nombre" anchoTotal>
+        <input value={p.nombre} onChange={(e) => setP({ ...p, nombre: e.target.value })} required autoFocus />
+      </Campo>
+      <Campo etiqueta="Modelo de facturación">
+        <Selector
+          valor={p.modelo}
+          opciones={opciones(modelosFacturacion)}
+          onChange={(v) => setP({ ...p, modelo: v })}
+        />
+      </Campo>
+      <Campo etiqueta="Descripción" anchoTotal>
+        <input value={p.descripcion ?? ''} onChange={(e) => setP({ ...p, descripcion: e.target.value })} />
+      </Campo>
+
+      <div className="campo ancho-total">
+        <span style={{ fontSize: 12, color: 'var(--texto-2)' }}>
+          Módulos · suma {p.modulos.length ? importeDePlantilla(p) : 0}
+        </span>
+        {p.modulos.map((modulo, i) => (
+          <div
+            key={modulo.id}
+            className="panel"
+            style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}
+          >
+            <div className="fila" style={{ flexWrap: 'nowrap' }}>
+              <input
+                value={modulo.codigo}
+                placeholder="C1"
+                style={{ flex: '0 0 80px' }}
+                onChange={(e) => cambiarModulo(i, { codigo: e.target.value })}
+              />
+              <input
+                value={modulo.titulo}
+                placeholder="Título del módulo"
+                onChange={(e) => cambiarModulo(i, { titulo: e.target.value })}
+              />
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={modulo.importe ?? ''}
+                placeholder="Precio"
+                style={{ flex: '0 0 110px' }}
+                onChange={(e) =>
+                  cambiarModulo(i, { importe: e.target.value === '' ? undefined : Number(e.target.value) })
+                }
+              />
+              <button
+                type="button"
+                className="btn discreto pequeno"
+                aria-label="Quitar módulo"
+                onClick={() => setP({ ...p, modulos: p.modulos.filter((_, j) => j !== i) })}
+              >
+                <Icono nombre="cerrar" />
+              </button>
+            </div>
+            <textarea
+              value={modulo.objetivo ?? ''}
+              placeholder="Objetivo del módulo"
+              rows={2}
+              onChange={(e) => cambiarModulo(i, { objetivo: e.target.value })}
+            />
+            <textarea
+              value={modulo.criterios.join('\n')}
+              placeholder="Criterios de aceptación, uno por línea"
+              rows={3}
+              onChange={(e) =>
+                cambiarModulo(i, { criterios: e.target.value.split('\n').map((t) => t.trim()).filter(Boolean) })
+              }
+            />
+          </div>
+        ))}
+        <button
+          type="button"
+          className="btn pequeno"
+          style={{ alignSelf: 'flex-start' }}
+          onClick={() =>
+            setP({
+              ...p,
+              modulos: [
+                ...p.modulos,
+                { id: nuevoId('mod'), codigo: `C${p.modulos.length + 1}`, titulo: '', criterios: [] },
+              ],
+            })
+          }
+        >
+          <Icono nombre="mas" />
+          Añadir módulo
+        </button>
+      </div>
+    </ModalFormulario>
+  );
+}
+
+/* ---------- Proyecto a partir de una plantilla ---------- */
+
+export function FormProyectoDesdePlantilla({
+  plantillas,
+  clientes,
+  onGuardar,
+  onCerrar,
+}: {
+  plantillas: Plantilla[];
+  clientes: Cliente[];
+  onGuardar: (datos: { plantilla: Plantilla; proyecto: Proyecto }) => void;
+  onCerrar: () => void;
+}) {
+  const [plantillaId, setPlantillaId] = useState(plantillas[0]?.id ?? '');
+  const plantilla = plantillas.find((p) => p.id === plantillaId);
+  const [nombre, setNombre] = useState(plantilla?.nombre ?? '');
+  const [clienteId, setClienteId] = useState(clientes[0]?.id ?? '');
+  const [fechaInicio, setFechaInicio] = useState(hoy());
+
+  const elegirPlantilla = (id: ID) => {
+    setPlantillaId(id);
+    const elegida = plantillas.find((p) => p.id === id);
+    // Solo se propone el nombre mientras no lo hayas tocado o siga siendo el de otra plantilla.
+    if (elegida && (!nombre || plantillas.some((p) => p.nombre === nombre))) setNombre(elegida.nombre);
+  };
+
+  return (
+    <ModalFormulario
+      titulo="Nuevo proyecto desde plantilla"
+      onCerrar={onCerrar}
+      onGuardar={() => {
+        if (!plantilla || !nombre.trim() || !clienteId) return;
+        onGuardar({
+          plantilla,
+          proyecto: {
+            id: nuevoId('pro'),
+            clienteId,
+            nombre: nombre.trim(),
+            descripcion: plantilla.descripcion,
+            estado: 'propuesta',
+            modelo: plantilla.modelo,
+            presupuesto: importeDePlantilla(plantilla) || undefined,
+            fechaInicio,
+            enlaces: [],
+            etiquetas: [],
+            creadoEn: new Date().toISOString(),
+          },
+        });
+      }}
+    >
+      <Campo etiqueta="Plantilla" anchoTotal>
+        <Selector
+          valor={plantillaId}
+          opciones={plantillas.map((p) => ({
+            valor: p.id,
+            texto: `${p.nombre} · ${p.modulos.length} módulos`,
+          }))}
+          onChange={elegirPlantilla}
+        />
+      </Campo>
+      <Campo etiqueta="Nombre del proyecto" anchoTotal>
+        <input value={nombre} onChange={(e) => setNombre(e.target.value)} required autoFocus />
+      </Campo>
+      <Campo etiqueta="Cliente">
+        <Selector
+          valor={clienteId}
+          opciones={clientes.map((c) => ({ valor: c.id, texto: c.nombre }))}
+          onChange={setClienteId}
+        />
+      </Campo>
+      <Campo etiqueta="Inicio">
+        <input type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
+      </Campo>
+      {plantilla && (
+        <div className="ancho-total">
+          <div className="pequeno texto-3" style={{ marginBottom: 6 }}>
+            Se crearán {plantilla.modulos.length} cortes con sus criterios. Presupuesto propuesto:{' '}
+            {importeDePlantilla(plantilla)}.
+          </div>
+          <div className="lista panel">
+            {plantilla.modulos.map((m) => (
+              <div className="lista-item" key={m.id}>
+                <span className="etiqueta mono">{m.codigo}</span>
+                <span className="crecer recorte">{m.titulo || 'Sin título'}</span>
+                <span className="num texto-2">{m.importe ?? '—'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </ModalFormulario>
+  );
+}
+
+/* ---------- Anadir modulos de una plantilla a un proyecto ---------- */
+
+export function ModalPlantilla({
+  plantillas,
+  onAnadir,
+  onCerrar,
+}: {
+  plantillas: Plantilla[];
+  onAnadir: (modulos: ModuloPlantilla[]) => void;
+  onCerrar: () => void;
+}) {
+  const [plantillaId, setPlantillaId] = useState(plantillas[0]?.id ?? '');
+  const plantilla = plantillas.find((p) => p.id === plantillaId);
+  const [descartados, setDescartados] = useState<Set<ID>>(new Set());
+
+  // Por defecto entran todos los modulos; se marcan los que se quieren dejar fuera.
+  const elegidos = (plantilla?.modulos ?? []).filter((m) => !descartados.has(m.id));
+
+  const alternar = (id: ID) =>
+    setDescartados((actual) => {
+      const siguiente = new Set(actual);
+      if (siguiente.has(id)) siguiente.delete(id);
+      else siguiente.add(id);
+      return siguiente;
+    });
+
+  return (
+    <ModalFormulario
+      titulo="Añadir módulos de una plantilla"
+      onCerrar={onCerrar}
+      onGuardar={() => {
+        if (elegidos.length === 0) return;
+        onAnadir(elegidos);
+      }}
+    >
+      <Campo etiqueta="Plantilla" anchoTotal>
+        <Selector
+          valor={plantillaId}
+          opciones={plantillas.map((p) => ({ valor: p.id, texto: `${p.nombre} · ${p.modulos.length} módulos` }))}
+          onChange={(id) => {
+            setPlantillaId(id);
+            setDescartados(new Set());
+          }}
+        />
+      </Campo>
+
+      <div className="ancho-total">
+        <div className="pequeno texto-3" style={{ marginBottom: 6 }}>
+          Se añadirán {elegidos.length} de {plantilla?.modulos.length ?? 0} módulos como cortes planificados.
+        </div>
+        <div className="panel lista">
+          {(plantilla?.modulos ?? []).map((m) => (
+            <label className="lista-item" key={m.id} style={{ cursor: 'pointer' }}>
+              <input type="checkbox" checked={!descartados.has(m.id)} onChange={() => alternar(m.id)} />
+              <span className="etiqueta mono">{m.codigo}</span>
+              <span className="crecer recorte">{m.titulo || 'Sin título'}</span>
+              <span className="num texto-2">{m.importe ?? '—'}</span>
+            </label>
+          ))}
+          {plantilla?.modulos.length === 0 && (
+            <span className="pequeno texto-3" style={{ padding: 12 }}>
+              Esta plantilla no tiene módulos.
+            </span>
+          )}
+        </div>
+      </div>
     </ModalFormulario>
   );
 }

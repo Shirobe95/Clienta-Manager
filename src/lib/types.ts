@@ -72,10 +72,33 @@ export interface Corte {
   fueraDeAlcance?: string;
   estado: EstadoCorte;
   fechaObjetivo?: ISODate;
+  /** Fecha en la que se entrego de verdad. Se rellena sola al pasar a revision. */
+  fechaEntrega?: ISODate;
   importe?: number;
   criterios: CriterioAceptacion[];
   notas?: string;
   orden: number;
+  creadoEn: ISODateTime;
+}
+
+/** Modulo de una plantilla: el molde del que sale un corte. */
+export interface ModuloPlantilla {
+  id: ID;
+  codigo: string;
+  titulo: string;
+  objetivo?: string;
+  fueraDeAlcance?: string;
+  importe?: number;
+  criterios: string[];
+}
+
+/** Conjunto reutilizable de modulos: sirve para montar un proyecto o un corte suelto. */
+export interface Plantilla {
+  id: ID;
+  nombre: string;
+  descripcion?: string;
+  modelo: ModeloFacturacion;
+  modulos: ModuloPlantilla[];
   creadoEn: ISODateTime;
 }
 
@@ -164,6 +187,7 @@ export interface BaseDatos {
   clientes: Cliente[];
   proyectos: Proyecto[];
   cortes: Corte[];
+  plantillas: Plantilla[];
   decisiones: Decision[];
   movimientos: Movimiento[];
   seguimientos: Seguimiento[];
@@ -191,6 +215,7 @@ export function baseDatosVacia(): BaseDatos {
     clientes: [],
     proyectos: [],
     cortes: [],
+    plantillas: [],
     decisiones: [],
     movimientos: [],
     seguimientos: [],

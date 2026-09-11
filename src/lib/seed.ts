@@ -119,6 +119,7 @@ export function datosEjemplo(): BaseDatos {
       fueraDeAlcance: 'Sincronización de escritura hacia WooCommerce.',
       estado: 'aceptado',
       fechaObjetivo: mesPasado(3),
+      fechaEntrega: mesPasado(3),
       importe: 2400,
       criterios: [
         { id: 'cri_1', texto: 'Esquema validado con datos reales', hecho: true },
@@ -137,6 +138,7 @@ export function datosEjemplo(): BaseDatos {
       fueraDeAlcance: 'Edición masiva por CSV.',
       estado: 'en_revision',
       fechaObjetivo: sumarDias(h, 10),
+      fechaEntrega: sumarDias(h, -2),
       importe: 2400,
       criterios: [
         { id: 'cri_4', texto: 'Listado con filtros y búsqueda', hecho: true },
@@ -169,6 +171,7 @@ export function datosEjemplo(): BaseDatos {
       titulo: 'Diseño y maquetación',
       estado: 'aceptado',
       fechaObjetivo: mesPasado(5),
+      fechaEntrega: mesPasado(5),
       importe: 1700,
       criterios: [{ id: 'cri_9', texto: 'Mockups aprobados', hecho: true }],
       orden: 1,
@@ -181,6 +184,8 @@ export function datosEjemplo(): BaseDatos {
       titulo: 'Implementación y publicación',
       estado: 'aceptado',
       fechaObjetivo: mesPasado(3),
+      // Entregado con retraso: asi la puntualidad del panel no sale siempre al 100%.
+      fechaEntrega: sumarDias(mesPasado(3), 9),
       importe: 1700,
       criterios: [
         { id: 'cri_10', texto: 'Lighthouse > 90 en móvil', hecho: true },
@@ -197,6 +202,7 @@ export function datosEjemplo(): BaseDatos {
       objetivo: 'Mover el sitio a un alojamiento con copias diarias y certificado gestionado.',
       estado: 'aceptado',
       fechaObjetivo: sumarDias(h, -8),
+      fechaEntrega: sumarDias(h, -8),
       importe: 480,
       criterios: [
         { id: 'cri_12', texto: 'Migración sin cortes de servicio', hecho: true },
@@ -369,11 +375,79 @@ export function datosEjemplo(): BaseDatos {
     },
   ];
 
+  const plantillas: BaseDatos['plantillas'] = [
+    {
+      id: 'pla_demo_1',
+      nombre: 'Web a medida',
+      descripcion: 'Sitio corporativo con contenido editable por el cliente.',
+      modelo: 'fijo',
+      modulos: [
+        {
+          id: 'mod_demo_1',
+          codigo: 'C1',
+          titulo: 'Diseño y maquetación',
+          objetivo: 'Mockups de todas las pantallas y sistema visual acordado.',
+          importe: 1200,
+          criterios: ['Mockups aprobados por el cliente', 'Versión móvil incluida'],
+        },
+        {
+          id: 'mod_demo_2',
+          codigo: 'C2',
+          titulo: 'Implementación',
+          objetivo: 'Desarrollo del sitio sobre el diseño aprobado.',
+          fueraDeAlcance: 'Redacción de los textos.',
+          importe: 1800,
+          criterios: ['Lighthouse > 90 en móvil', 'Contenido editable por el cliente'],
+        },
+        {
+          id: 'mod_demo_3',
+          codigo: 'C3',
+          titulo: 'Puesta en marcha',
+          objetivo: 'Publicación, dominio, analítica y copias de seguridad.',
+          importe: 600,
+          criterios: ['Dominio y certificado activos', 'Copias automáticas verificadas'],
+        },
+      ],
+      creadoEn: ahora,
+    },
+    {
+      id: 'pla_demo_2',
+      nombre: 'Panel interno',
+      descripcion: 'Herramienta de gestión a medida sobre datos existentes.',
+      modelo: 'fijo',
+      modulos: [
+        {
+          id: 'mod_demo_4',
+          codigo: 'C1',
+          titulo: 'Modelo de datos e importación',
+          importe: 2400,
+          criterios: ['Esquema validado con datos reales', 'Importación con informe de errores'],
+        },
+        {
+          id: 'mod_demo_5',
+          codigo: 'C2',
+          titulo: 'Panel y edición',
+          importe: 2400,
+          criterios: ['Listado con filtros', 'Preview antes de aplicar cambios'],
+        },
+        {
+          id: 'mod_demo_6',
+          codigo: 'C3',
+          titulo: 'Integración externa',
+          importe: 2400,
+          criterios: ['Sincronización programada', 'Informe de diferencias'],
+        },
+      ],
+      creadoEn: ahora,
+    },
+  ];
+
   return {
     version: DB_VERSION,
     clientes,
     proyectos,
     cortes,
+    plantillas,
     decisiones,
     movimientos,
     seguimientos,

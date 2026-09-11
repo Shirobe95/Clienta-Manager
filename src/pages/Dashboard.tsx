@@ -20,6 +20,7 @@ import { useFormato } from '../state/formato';
 import { useAlmacen } from '../state/store';
 import { FormMovimiento } from '../components/formularios';
 import { conceptoDeCorte, cortesSinFacturar } from '../lib/facturacion';
+import { resumenEntregas } from '../lib/entregas';
 import type { CorteSinFacturar } from '../lib/facturacion';
 
 const SERIES: SerieGrafico[] = [
@@ -40,6 +41,7 @@ export function Dashboard() {
   const agenda = seguimientosProximos(db, fecha, 45).slice(0, 6);
   const ranking = rankingClientes(db, fecha, 5);
   const sinFacturar = cortesSinFacturar(db);
+  const entregas = resumenEntregas(db, fecha);
   const cortesVivos = db.cortes
     .filter((c) => c.estado === 'en_curso' || c.estado === 'en_revision')
     .sort((a, b) => (a.fechaObjetivo ?? '9999').localeCompare(b.fechaObjetivo ?? '9999'))
@@ -157,6 +159,34 @@ export function Dashboard() {
 
         <Panel titulo="Evolución de los últimos 12 meses" icono="metricas">
           <GraficoBarras datos={serie} series={SERIES} moneda={moneda} locale={locale} />
+        </Panel>
+
+        <Panel titulo={`Entregas ${anio}`} icono="brujula">
+          <div className="grid grid-3">
+            <div>
+              <div className="kpi-etiqueta">Módulos aceptados</div>
+              <div className="kpi-valor">{entregas.aceptadosAnio}</div>
+              <div className="kpi-pie">
+                {entregas.entregadosAnio} entregados, revisión incluida
+              </div>
+            </div>
+            <div>
+              <div className="kpi-etiqueta">Importe medio por módulo</div>
+              <div className="kpi-valor">{dinero(entregas.importeMedio)}</div>
+              <div className="kpi-pie">Sobre los módulos aceptados con precio</div>
+            </div>
+            <div>
+              <div className="kpi-etiqueta">Entregas a tiempo</div>
+              <div className="kpi-valor" style={puntualidadColor(entregas.puntualidad)}>
+                {entregas.puntualidad === null ? '—' : `${entregas.puntualidad}%`}
+              </div>
+              <div className="kpi-pie">
+                {entregas.conFechas === 0
+                  ? 'Hace falta fecha objetivo y de entrega'
+                  : `${entregas.fueraDePlazo} de ${entregas.conFechas} fuera de plazo`}
+              </div>
+            </div>
+          </div>
         </Panel>
 
         <div className="grid grid-2">
@@ -311,6 +341,12 @@ export function Dashboard() {
       )}
     </>
   );
+}
+
+/** Verde a partir del 80%, ámbar por debajo: un plazo incumplido de cada cinco ya escuece. */
+function puntualidadColor(valor: number | null) {
+  if (valor === null) return undefined;
+  return { color: valor >= 80 ? 'var(--ok)' : 'var(--aviso)' };
 }
 
 function insignia(estado: ReturnType<typeof estadoCalculado>) {

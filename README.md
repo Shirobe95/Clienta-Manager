@@ -7,13 +7,17 @@ trabajo freelance. Todo vive en el navegador (local-first), sin servidor ni cuen
 
 - **Clientes**: ficha con contacto, estado, tarifa, etiquetas, notas y su historial económico.
 - **Proyectos**: visión general, modelo de facturación, presupuesto, enlaces y avance real.
-- **Cortes**: bloques de trabajo acotados, con objetivo, *fuera de alcance*, criterios de aceptación e importe.
+- **Cortes**: bloques de trabajo acotados, con objetivo, *fuera de alcance*, criterios de aceptación,
+  precio y fecha de entrega real. Son la unidad de venta: se cobra por módulo entregado.
+- **Plantillas**: catálogo de módulos reutilizables con precio y criterios, para montar un proyecto
+  entero o añadir cortes sueltos sin reescribirlos.
 - **Decisiones**: registro tipo ADR ligero (contexto, decisión, alternativas, consecuencias).
 - **Cobros y pagos**: base imponible, IVA/IRPF, vencimientos, estado y vínculo con proyecto y corte.
 - **Facturación**: serie correlativa configurable, aviso de huecos y duplicados, exportación a CSV
   y recordatorio de impago listo para pegar en un correo.
 - **Agenda**: mantenimientos, renovaciones y futuras actualizaciones, con recurrencia.
-- **Métricas**: cobrado del mes y del año, pendiente, vencido, objetivo anual, evolución a 12 meses y ranking de clientes.
+- **Métricas**: cobrado del mes y del año, pendiente, vencido, objetivo anual, evolución a 12 meses,
+  ranking de clientes y entregas (módulos aceptados, importe medio por módulo y % dentro de plazo).
 
 ## Arrancar
 
@@ -36,7 +40,7 @@ Para ver el panel con contenido: **Ajustes → Cargar datos de ejemplo**.
 
 ```
 src/
-  lib/        modelo de datos, formato, metricas, persistencia, datos de ejemplo
+  lib/        modelo de datos, formato, metricas, facturacion, entregas, persistencia, ejemplo
   state/      contexto de React sobre el documento local (CRUD + borrado en cascada)
   components/ sistema de UI (paneles, KPIs, tablas, formularios, grafico)
   pages/      una vista por seccion del panel
@@ -62,6 +66,12 @@ Decisiones que conviene conocer antes de tocar el código:
   números ya emitidos de la serie y toma el mayor más uno: así no se desincroniza al importar una copia
   ni al borrar un movimiento. Un corte se factura desde el panel o desde su proyecto, y solo entonces se
   reserva el número: nunca se crea un cobro sin que tú lo confirmes.
+- **La fecha de entrega se apunta sola, pero no manda.** Pasar un corte a revisión o aceptado escribe la
+  fecha de entrega si está vacía, y la retira si el corte vuelve atrás; una fecha puesta a mano nunca se
+  pisa. La puntualidad solo cuenta los cortes que tienen fecha objetivo *y* fecha de entrega.
+- **El presupuesto no se recalcula solo.** `cuadreProyecto` compara lo pactado con la suma de los módulos
+  y con lo facturado, y avisa si difieren en más de un euro (por debajo es redondeo). Decides tú si el que
+  cambia es el presupuesto o el precio de un módulo.
 - **El CSV usa punto y coma y decimales locales.** Es lo que abre limpio una hoja de cálculo en español
   sin pasar por el asistente de importación. Exporta lo que estás viendo, con los filtros aplicados.
 - **Sin dependencias de UI.** El sistema visual, los iconos y el gráfico son propios: solo React y
@@ -77,5 +87,6 @@ Borrar los datos del sitio en el navegador borra también el contenido de la apl
 ## Estado de las pruebas
 
 `npm test` cubre la lógica de negocio: métricas (impuestos, estados derivados, KPIs, serie mensual,
-ranking, vencimientos, avance) y facturación (numeración, huecos y duplicados, cortes sin facturar,
-CSV y recordatorios). La UI no tiene tests automatizados todavía; se verifica a mano en el navegador.
+ranking, vencimientos, avance), facturación (numeración, huecos y duplicados, cortes sin facturar, CSV y
+recordatorios) y entregas (fecha automática, puntualidad, cuadre de presupuesto y plantillas). La UI no
+tiene tests automatizados todavía; se verifica a mano en el navegador.

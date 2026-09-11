@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { Cabecera } from '../components/Cabecera';
+import { hoy } from '../lib/format';
 import { Icono } from '../components/Icono';
 import { TablaMovimientos } from '../components/TablaMovimientos';
-import { FormCorte, FormDecision, FormMovimiento, FormProyecto } from '../components/formularios';
+import { FormCorte, FormDecision, FormMovimiento, FormProyecto, ModalPlantilla } from '../components/formularios';
 import { BotonBorrar, Insignia, Kpi, Panel, Pestanas, Vacio } from '../components/ui';
 import { estadosCorte, estadosDecision, estadosProyecto, modelosFacturacion } from '../lib/labels';
+import { ajustarFechaEntrega, corteDesdeModulo, cuadreProyecto } from '../lib/entregas';
 import { conceptoDeCorte, cortesSinFacturar } from '../lib/facturacion';
 import { progresoProyecto, totalConImpuestos } from '../lib/metrics';
 import { useFormato } from '../state/formato';
@@ -24,6 +26,7 @@ export function ProyectoDetalle() {
   const [formDecision, setFormDecision] = useState<Decision | 'nuevo' | null>(null);
   const [formMovimiento, setFormMovimiento] = useState<Movimiento | 'nuevo' | null>(null);
   const [contextoMovimiento, setContextoMovimiento] = useState<{ corteId?: string; concepto?: string; importe?: number }>({});
+  const [anadirDesdePlantilla, setAnadirDesdePlantilla] = useState(false);
 
   const proyecto = db.proyectos.find((p) => p.id === id);
   if (!proyecto) return <Navigate to="/proyectos" replace />;
@@ -46,6 +49,11 @@ export function ProyectoDetalle() {
     .filter((m) => m.tipo === 'cobro' && m.estado === 'pagado')
     .reduce((suma, m) => suma + totalConImpuestos(m), 0);
   const progreso = progresoProyecto(cortes);
+  const cuadre = cuadreProyecto(db, proyecto);
+  const fecha = hoy();
+
+  /** Guardar un corte apunta o retira su fecha de entrega segun el estado. */
+  const guardarCorte = (c: Corte) => guardar('cortes', ajustarFechaEntrega(c, fecha));
   const idsSinFacturar = new Set(
     cortesSinFacturar(db)
       .filter((x) => x.proyecto.id === proyecto.id)
@@ -99,10 +107,17 @@ export function ProyectoDetalle() {
 
         <div className="grid grid-kpi">
           <Kpi
-            etiqueta="Presupuesto"
-            valor={proyecto.presupuesto ? dinero(proyecto.presupuesto) : '—'}
-            pie={proyecto.presupuesto ? `${Math.round((facturado / proyecto.presupuesto) * 100)}% facturado` : 'Sin definir'}
-            progreso={proyecto.presupuesto ? (facturado / proyecto.presupuesto) * 100 : undefined}
+            etiqueta="Presupuesto pactado"
+            valor={cuadre.pactado ? dinero(cuadre.pactado) : '—'}
+            tono={cuadre.cuadra ? 'neutro' : 'aviso'}
+            pie={
+              cuadre.pactado
+                ? cuadre.cuadra
+                  ? `Los módulos suman ${dinero(cuadre.modulos)}`
+                  : `Los módulos suman ${dinero(cuadre.modulos)} · ${cuadre.desviacion > 0 ? '+' : ''}${dinero(cuadre.desviacion)}`
+                : `Los módulos suman ${dinero(cuadre.modulos)}`
+            }
+            progreso={cuadre.pactado ? (facturado / cuadre.pactado) * 100 : undefined}
           />
           <Kpi etiqueta="Facturado" valor={dinero(facturado)} tono="acento" />
           <Kpi etiqueta="Cobrado" valor={dinero(cobrado)} tono="ok" pie={`Pendiente ${dinero(facturado - cobrado)}`} />
@@ -113,6 +128,23 @@ export function ProyectoDetalle() {
             pie={`${cortes.filter((c) => c.estado === 'aceptado').length} de ${cortes.length} aceptados`}
           />
         </div>
+
+        {(!cuadre.cuadra || cuadre.cortesSinImporte > 0) && (
+          <div className="panel panel-cuerpo pequeno fila" style={{ borderColor: 'var(--aviso)', gap: 10 }}>
+            <span style={{ color: 'var(--aviso)', display: 'flex' }}>
+              <Icono nombre="aviso" />
+            </span>
+            <span className="texto-2 crecer">
+              {!cuadre.cuadra &&
+                `Los módulos suman ${dinero(cuadre.modulos)} frente a los ${dinero(cuadre.pactado ?? 0)} pactados (${
+                  cuadre.desviacion > 0 ? '+' : ''
+                }${dinero(cuadre.desviacion)}).`}
+              {!cuadre.cuadra && cuadre.cortesSinImporte > 0 && ' '}
+              {cuadre.cortesSinImporte > 0 &&
+                `${cuadre.cortesSinImporte} corte${cuadre.cortesSinImporte === 1 ? '' : 's'} sin precio asignado.`}
+            </span>
+          </div>
+        )}
 
         <Pestanas<Pestana>
           activa={pestana}
@@ -174,10 +206,22 @@ export function ProyectoDetalle() {
             icono="brujula"
             sinRelleno
             acciones={
-              <button type="button" className="btn pequeno" onClick={() => setFormCorte('nuevo')}>
-                <Icono nombre="mas" />
-                Nuevo corte
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="btn pequeno"
+                  disabled={db.plantillas.length === 0}
+                  title={db.plantillas.length === 0 ? 'No hay plantillas todavía' : 'Añadir módulos de una plantilla'}
+                  onClick={() => setAnadirDesdePlantilla(true)}
+                >
+                  <Icono nombre="nota" />
+                  Desde plantilla
+                </button>
+                <button type="button" className="btn pequeno" onClick={() => setFormCorte('nuevo')}>
+                  <Icono nombre="mas" />
+                  Nuevo corte
+                </button>
+              </>
             }
           >
             {cortes.length === 0 ? (
@@ -218,7 +262,7 @@ export function ProyectoDetalle() {
                                   type="checkbox"
                                   checked={cr.hecho}
                                   onChange={(e) =>
-                                    guardar('cortes', {
+                                    guardarCorte({
                                       ...c,
                                       criterios: c.criterios.map((x) =>
                                         x.id === cr.id ? { ...x, hecho: e.target.checked } : x,
@@ -234,6 +278,18 @@ export function ProyectoDetalle() {
                         <div className="meta" style={{ marginTop: 6 }}>
                           {c.criterios.length > 0 && `${hechos}/${c.criterios.length} criterios · `}
                           {c.fechaObjetivo ? `objetivo ${fmtFecha(c.fechaObjetivo)}` : 'sin fecha objetivo'}
+                          {c.fechaEntrega && (
+                            <span
+                              style={
+                                c.fechaObjetivo && c.fechaEntrega > c.fechaObjetivo
+                                  ? { color: 'var(--aviso)' }
+                                  : { color: 'var(--ok)' }
+                              }
+                            >
+                              {' · entregado '}
+                              {fmtFecha(c.fechaEntrega)}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="fila" style={{ gap: 4, flexWrap: 'nowrap' }}>
@@ -348,6 +404,20 @@ export function ProyectoDetalle() {
         />
       )}
 
+      {anadirDesdePlantilla && (
+        <ModalPlantilla
+          plantillas={db.plantillas}
+          onCerrar={() => setAnadirDesdePlantilla(false)}
+          onAnadir={(modulos) => {
+            modulos.forEach((modulo, i) =>
+              guardar('cortes', corteDesdeModulo(modulo, proyecto.id, cortes.length + 1 + i)),
+            );
+            setAnadirDesdePlantilla(false);
+            setPestana('cortes');
+          }}
+        />
+      )}
+
       {formCorte && (
         <FormCorte
           inicial={formCorte === 'nuevo' ? undefined : formCorte}
@@ -355,7 +425,7 @@ export function ProyectoDetalle() {
           siguienteOrden={cortes.length + 1}
           onCerrar={() => setFormCorte(null)}
           onGuardar={(c) => {
-            guardar('cortes', c);
+            guardarCorte(c);
             setFormCorte(null);
           }}
         />

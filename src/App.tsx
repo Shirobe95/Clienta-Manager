@@ -6,6 +6,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Clientes } from './pages/Clientes';
 import { ClienteDetalle } from './pages/ClienteDetalle';
 import { Proyectos } from './pages/Proyectos';
+import { Plantillas } from './pages/Plantillas';
 import { ProyectoDetalle } from './pages/ProyectoDetalle';
 import { Cobros } from './pages/Cobros';
 import { Agenda } from './pages/Agenda';
@@ -31,6 +32,7 @@ export function App() {
         { a: '/panel', texto: 'Panel', icono: 'panel' },
         { a: '/clientes', texto: 'Clientes', icono: 'clientes', cuenta: db.clientes.length },
         { a: '/proyectos', texto: 'Proyectos', icono: 'proyectos', cuenta: db.proyectos.length },
+        { a: '/plantillas', texto: 'Plantillas', icono: 'nota', cuenta: db.plantillas.length },
       ],
     },
     {
@@ -100,6 +102,7 @@ export function App() {
           <Route path="/clientes/:id" element={<ClienteDetalle />} />
           <Route path="/proyectos" element={<Proyectos />} />
           <Route path="/proyectos/:id" element={<ProyectoDetalle />} />
+          <Route path="/plantillas" element={<Plantillas />} />
           <Route path="/cobros" element={<Cobros />} />
           <Route path="/agenda" element={<Agenda />} />
           <Route path="/ajustes" element={<Ajustes />} />

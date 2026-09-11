@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Cabecera } from '../components/Cabecera';
 import { Icono } from '../components/Icono';
-import { FormProyecto } from '../components/formularios';
+import { FormProyecto, FormProyectoDesdePlantilla } from '../components/formularios';
 import { Buscador, Insignia, Panel, Selector, Vacio } from '../components/ui';
 import { estadosProyecto, modelosFacturacion } from '../lib/labels';
+import { cortesDesdePlantilla } from '../lib/entregas';
 import { progresoProyecto } from '../lib/metrics';
 import { useFormato } from '../state/formato';
 import { useAlmacen } from '../state/store';
@@ -15,9 +16,11 @@ type Filtro = EstadoProyecto | 'todos' | 'vivos';
 export function Proyectos() {
   const { db, guardar } = useAlmacen();
   const { dinero, fecha: fmtFecha } = useFormato();
+  const navegar = useNavigate();
   const [busqueda, setBusqueda] = useState('');
   const [filtro, setFiltro] = useState<Filtro>('vivos');
   const [formulario, setFormulario] = useState<Proyecto | 'nuevo' | null>(null);
+  const [desdePlantilla, setDesdePlantilla] = useState(false);
 
   const lista = useMemo(() => {
     const texto = busqueda.trim().toLowerCase();
@@ -43,16 +46,30 @@ export function Proyectos() {
         titulo="Proyectos"
         subtitulo={`${db.proyectos.length} proyectos · ${db.cortes.length} cortes registrados`}
         acciones={
-          <button
-            type="button"
-            className="btn primario"
-            onClick={() => setFormulario('nuevo')}
-            disabled={db.clientes.length === 0}
-            title={db.clientes.length === 0 ? 'Crea antes un cliente' : undefined}
-          >
-            <Icono nombre="mas" />
-            Nuevo proyecto
-          </button>
+          <>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setDesdePlantilla(true)}
+              disabled={db.clientes.length === 0 || db.plantillas.length === 0}
+              title={
+                db.plantillas.length === 0 ? 'Crea antes una plantilla' : 'Montar el proyecto desde una plantilla'
+              }
+            >
+              <Icono nombre="nota" />
+              Desde plantilla
+            </button>
+            <button
+              type="button"
+              className="btn primario"
+              onClick={() => setFormulario('nuevo')}
+              disabled={db.clientes.length === 0}
+              title={db.clientes.length === 0 ? 'Crea antes un cliente' : undefined}
+            >
+              <Icono nombre="mas" />
+              Nuevo proyecto
+            </button>
+          </>
         }
       />
 
@@ -138,6 +155,20 @@ export function Proyectos() {
           </div>
         )}
       </div>
+
+      {desdePlantilla && (
+        <FormProyectoDesdePlantilla
+          plantillas={db.plantillas}
+          clientes={db.clientes}
+          onCerrar={() => setDesdePlantilla(false)}
+          onGuardar={({ plantilla, proyecto }) => {
+            guardar('proyectos', proyecto);
+            for (const corte of cortesDesdePlantilla(plantilla, proyecto.id)) guardar('cortes', corte);
+            setDesdePlantilla(false);
+            navegar(`/proyectos/${proyecto.id}`);
+          }}
+        />
+      )}
 
       {formulario && (
         <FormProyecto

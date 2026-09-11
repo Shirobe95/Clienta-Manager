@@ -10,12 +10,20 @@ import type {
   Decision,
   ID,
   Movimiento,
+  Plantilla,
   Proyecto,
   Seguimiento,
 } from '../lib/types';
 
 /** Colecciones editables del documento. */
-type Coleccion = 'clientes' | 'proyectos' | 'cortes' | 'decisiones' | 'movimientos' | 'seguimientos';
+type Coleccion =
+  | 'clientes'
+  | 'proyectos'
+  | 'cortes'
+  | 'plantillas'
+  | 'decisiones'
+  | 'movimientos'
+  | 'seguimientos';
 
 type ElementoDe<K extends Coleccion> = K extends 'clientes'
   ? Cliente
@@ -23,11 +31,13 @@ type ElementoDe<K extends Coleccion> = K extends 'clientes'
     ? Proyecto
     : K extends 'cortes'
       ? Corte
-      : K extends 'decisiones'
-        ? Decision
-        : K extends 'movimientos'
-          ? Movimiento
-          : Seguimiento;
+      : K extends 'plantillas'
+        ? Plantilla
+        : K extends 'decisiones'
+          ? Decision
+          : K extends 'movimientos'
+            ? Movimiento
+            : Seguimiento;
 
 interface ContextoAlmacen {
   db: BaseDatos;
