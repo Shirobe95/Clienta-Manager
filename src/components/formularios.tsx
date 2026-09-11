@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Campo, Modal, Selector } from './ui';
 import { Icono } from './Icono';
+import { siguienteNumeroFactura } from '../lib/facturacion';
 import { hoy, sumarDias } from '../lib/format';
 import { nuevoId } from '../lib/id';
 import {
@@ -509,6 +510,7 @@ export function FormMovimiento({
   clientes,
   proyectos,
   cortes,
+  movimientos,
   ajustes,
   contexto,
   onGuardar,
@@ -518,6 +520,7 @@ export function FormMovimiento({
   clientes: Cliente[];
   proyectos: Proyecto[];
   cortes: Corte[];
+  movimientos: Movimiento[];
   ajustes: Ajustes;
   contexto?: { clienteId?: ID; proyectoId?: ID; corteId?: ID; concepto?: string; importe?: number };
   onGuardar: (m: Movimiento) => void;
@@ -534,6 +537,8 @@ export function FormMovimiento({
       corteId: contexto?.corteId,
       concepto: contexto?.concepto ?? '',
       importe: contexto?.importe ?? 0,
+      // Facturar un corte es una accion explicita: se reserva ya el numero de serie.
+      numeroFactura: contexto?.corteId ? siguienteNumeroFactura(movimientos, ajustes) : undefined,
       ivaPct: ajustes.ivaPorDefecto,
       irpfPct: ajustes.irpfPorDefecto,
       estado: 'pendiente',
@@ -656,8 +661,30 @@ export function FormMovimiento({
           onChange={(e) => setM({ ...m, fechaPago: e.target.value || undefined })}
         />
       </Campo>
-      <Campo etiqueta="Nº factura">
-        <input value={m.numeroFactura ?? ''} onChange={(e) => setM({ ...m, numeroFactura: e.target.value })} />
+      <Campo etiqueta="Nº factura" pista={`Siguiente libre: ${siguienteNumeroFactura(movimientos, ajustes)}`}>
+        <div className="fila" style={{ flexWrap: 'nowrap' }}>
+          <input
+            value={m.numeroFactura ?? ''}
+            onChange={(e) => setM({ ...m, numeroFactura: e.target.value })}
+            placeholder="Sin numerar"
+          />
+          <button
+            type="button"
+            className="btn pequeno"
+            title="Asignar el siguiente número de la serie"
+            onClick={() =>
+              setM({
+                ...m,
+                numeroFactura: siguienteNumeroFactura(
+                  movimientos.filter((x) => x.id !== m.id),
+                  ajustes,
+                ),
+              })
+            }
+          >
+            Generar
+          </button>
+        </div>
       </Campo>
       <Campo etiqueta="Método">
         <input

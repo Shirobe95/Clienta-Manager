@@ -1,18 +1,23 @@
 # Roadmap
 
-Estado: **C1 entregado**. Lo demás son propuestas, no compromisos.
+Estado: **C1 y C2 entregados**. Lo demás son propuestas, no compromisos.
 
 ## C1 — Panel base (hecho)
 
 Modelo de datos, persistencia local con export/import, sistema visual, seis vistas
 (panel, clientes, proyectos, cobros, agenda, ajustes), cortes, decisiones, métricas y datos de ejemplo.
 
-## C2 — Cierre del ciclo de cobro
+## C2 — Cierre del ciclo de cobro (hecho)
 
-- Generar un cobro automáticamente al marcar un corte como aceptado.
-- Numeración de factura con serie configurable y detección de huecos.
-- Exportación de movimientos a CSV para la gestoría.
-- Recordatorio de impago: aviso en el panel a los X días del vencimiento.
+- Panel de cortes aceptados pendientes de facturar, con botón para facturarlos en un clic.
+- Numeración de factura con serie y dígitos configurables, deducida de lo ya emitido.
+- Revisión de la numeración: huecos dentro de la serie y números duplicados.
+- Exportación a CSV de la vista filtrada, lista para la gestoría.
+- Recordatorio de impago copiable al portapapeles desde cualquier cobro vencido.
+
+Desviación respecto a lo planteado: el cobro **no** se crea solo al aceptar un corte. El corte queda
+marcado como *sin facturar* y se factura con un clic, con el formulario ya relleno. Crear movimientos
+económicos sin confirmación es justo el tipo de escritura silenciosa que no quiero en esta app.
 
 ## C3 — Tiempo y rentabilidad
 

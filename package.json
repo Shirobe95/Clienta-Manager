@@ -1,9 +1,9 @@
 {
-  "name": "clienta-manager",
+  "name": "gremio",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Panel de control de clientes, proyectos, cobros y metricas para trabajo freelance.",
+  "description": "Gremio: panel de encargos. Clientes, proyectos, cortes, cobros y metricas para trabajo freelance.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

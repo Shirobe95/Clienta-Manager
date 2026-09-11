@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Icono } from './Icono';
 import { BotonBorrar, Insignia, Vacio } from './ui';
 import { hoy } from '../lib/format';
+import { textoRecordatorio } from '../lib/facturacion';
 import { estadosMovimiento } from '../lib/labels';
 import { estadoCalculado, totalConImpuestos } from '../lib/metrics';
 import { useFormato } from '../state/formato';
@@ -21,7 +23,19 @@ export function TablaMovimientos({
 }) {
   const { db, guardar, eliminar } = useAlmacen();
   const { dinero, fecha: fmtFecha } = useFormato();
+  const [copiado, setCopiado] = useState<string | null>(null);
   const fecha = hoy();
+
+  const copiarRecordatorio = async (m: Movimiento) => {
+    try {
+      await navigator.clipboard.writeText(textoRecordatorio(m, db, fecha));
+      setCopiado(m.id);
+      setTimeout(() => setCopiado(null), 2000);
+    } catch {
+      // Sin permiso de portapapeles: se deja el texto a la vista para copiarlo a mano.
+      window.prompt('Copia el recordatorio:', textoRecordatorio(m, db, fecha));
+    }
+  };
 
   if (movimientos.length === 0) {
     return <Vacio titulo="Sin movimientos" descripcion="Registra cobros y pagos para verlos aquí." icono="cobros" />;
@@ -82,6 +96,16 @@ export function TablaMovimientos({
                 </td>
                 <td>
                   <div className="fila" style={{ gap: 4, justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
+                    {estado === 'vencido' && (
+                      <button
+                        type="button"
+                        className="btn pequeno"
+                        title="Copiar recordatorio de impago"
+                        onClick={() => void copiarRecordatorio(m)}
+                      >
+                        <Icono nombre={copiado === m.id ? 'check' : 'nota'} />
+                      </button>
+                    )}
                     {m.estado !== 'pagado' && (
                       <button
                         type="button"

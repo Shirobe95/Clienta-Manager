@@ -18,7 +18,7 @@ export function Ajustes() {
     const url = URL.createObjectURL(blob);
     const enlace = document.createElement('a');
     enlace.href = url;
-    enlace.download = `clienta-manager-${new Date().toISOString().slice(0, 10)}.json`;
+    enlace.download = `gremio-${new Date().toISOString().slice(0, 10)}.json`;
     enlace.click();
     URL.revokeObjectURL(url);
     setMensaje({ texto: 'Copia descargada.', tono: 'ok' });
@@ -103,6 +103,22 @@ export function Ajustes() {
                 min={0}
                 value={ajustes.diasVencimiento}
                 onChange={(e) => setAjustes({ ...ajustes, diasVencimiento: Number(e.target.value) })}
+              />
+            </Campo>
+            <Campo etiqueta="Serie de facturación" pista="Prefijo del número: 2026 → 2026-007">
+              <input
+                value={ajustes.serieFactura}
+                onChange={(e) => setAjustes({ ...ajustes, serieFactura: e.target.value })}
+                placeholder="Sin prefijo"
+              />
+            </Campo>
+            <Campo etiqueta="Dígitos del número" pista="3 → 007">
+              <input
+                type="number"
+                min={1}
+                max={8}
+                value={ajustes.digitosFactura}
+                onChange={(e) => setAjustes({ ...ajustes, digitosFactura: Number(e.target.value) })}
               />
             </Campo>
             <Campo etiqueta="Objetivo anual" pista="Opcional, alimenta la barra del panel">

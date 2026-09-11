@@ -1,7 +1,7 @@
-# Clienta Manager
+# Gremio
 
-Panel de control para trabajo freelance: clientes, proyectos, cortes, decisiones, cobros y métricas.
-Todo vive en el navegador (local-first), sin servidor ni cuentas.
+*Panel de encargos.* Control de clientes, proyectos, cortes, decisiones, cobros y métricas para
+trabajo freelance. Todo vive en el navegador (local-first), sin servidor ni cuentas.
 
 ## Qué resuelve
 
@@ -10,6 +10,8 @@ Todo vive en el navegador (local-first), sin servidor ni cuentas.
 - **Cortes**: bloques de trabajo acotados, con objetivo, *fuera de alcance*, criterios de aceptación e importe.
 - **Decisiones**: registro tipo ADR ligero (contexto, decisión, alternativas, consecuencias).
 - **Cobros y pagos**: base imponible, IVA/IRPF, vencimientos, estado y vínculo con proyecto y corte.
+- **Facturación**: serie correlativa configurable, aviso de huecos y duplicados, exportación a CSV
+  y recordatorio de impago listo para pegar en un correo.
 - **Agenda**: mantenimientos, renovaciones y futuras actualizaciones, con recurrencia.
 - **Métricas**: cobrado del mes y del año, pendiente, vencido, objetivo anual, evolución a 12 meses y ranking de clientes.
 
@@ -56,6 +58,12 @@ Decisiones que conviene conocer antes de tocar el código:
   emisión si no.
 - **Borrado en cascada explícito.** Eliminar un cliente arrastra sus proyectos, cortes y decisiones;
   eliminar un proyecto desvincula (no borra) sus movimientos. Está centralizado en `aplicarBorrado`.
+- **El número de factura se deduce, no se guarda en un contador.** `siguienteNumeroFactura` mira los
+  números ya emitidos de la serie y toma el mayor más uno: así no se desincroniza al importar una copia
+  ni al borrar un movimiento. Un corte se factura desde el panel o desde su proyecto, y solo entonces se
+  reserva el número: nunca se crea un cobro sin que tú lo confirmes.
+- **El CSV usa punto y coma y decimales locales.** Es lo que abre limpio una hoja de cálculo en español
+  sin pasar por el asistente de importación. Exporta lo que estás viendo, con los filtros aplicados.
 - **Sin dependencias de UI.** El sistema visual, los iconos y el gráfico son propios: solo React y
   React Router.
 
@@ -68,5 +76,6 @@ Borrar los datos del sitio en el navegador borra también el contenido de la apl
 
 ## Estado de las pruebas
 
-`npm test` cubre la capa de métricas (impuestos, estados derivados, KPIs, serie mensual, ranking,
-vencimientos y avance de proyecto). La UI no tiene tests automatizados todavía.
+`npm test` cubre la lógica de negocio: métricas (impuestos, estados derivados, KPIs, serie mensual,
+ranking, vencimientos, avance) y facturación (numeración, huecos y duplicados, cortes sin facturar,
+CSV y recordatorios). La UI no tiene tests automatizados todavía; se verifica a mano en el navegador.

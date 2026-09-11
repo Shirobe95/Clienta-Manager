@@ -230,6 +230,7 @@ export function ClienteDetalle() {
           clientes={db.clientes}
           proyectos={db.proyectos}
           cortes={db.cortes}
+          movimientos={db.movimientos}
           ajustes={db.ajustes}
           contexto={{ clienteId: cliente.id }}
           onCerrar={() => setFormMovimiento(null)}

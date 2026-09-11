@@ -1,7 +1,9 @@
-import { baseDatosVacia, DB_VERSION, AJUSTES_POR_DEFECTO } from './types';
+import { ajustesPorDefecto, baseDatosVacia, DB_VERSION } from './types';
 import type { BaseDatos } from './types';
 
-export const CLAVE_ALMACEN = 'clienta-manager:db:v1';
+export const CLAVE_ALMACEN = 'gremio:db:v1';
+/** Clave anterior al renombrado del proyecto. Se migra sola al primer arranque. */
+export const CLAVE_LEGADO = 'clienta-manager:db:v1';
 
 /**
  * Contrato de persistencia. Hoy se implementa contra localStorage;
@@ -16,7 +18,7 @@ export interface AlmacenDatos {
 export const almacenLocal: AlmacenDatos = {
   leer() {
     try {
-      const crudo = localStorage.getItem(CLAVE_ALMACEN);
+      const crudo = localStorage.getItem(CLAVE_ALMACEN) ?? rescatarLegado();
       if (!crudo) return null;
       return migrar(JSON.parse(crudo) as Partial<BaseDatos>);
     } catch (error) {
@@ -40,6 +42,15 @@ export const almacenLocal: AlmacenDatos = {
   },
 };
 
+/** Recupera los datos guardados con el nombre antiguo y los mueve a la clave actual. */
+function rescatarLegado(): string | null {
+  const crudo = localStorage.getItem(CLAVE_LEGADO);
+  if (!crudo) return null;
+  localStorage.setItem(CLAVE_ALMACEN, crudo);
+  localStorage.removeItem(CLAVE_LEGADO);
+  return crudo;
+}
+
 /** Normaliza un documento leido o importado para que cumpla el esquema actual. */
 export function migrar(entrada: Partial<BaseDatos>): BaseDatos {
   const vacia = baseDatosVacia();
@@ -51,7 +62,7 @@ export function migrar(entrada: Partial<BaseDatos>): BaseDatos {
     decisiones: entrada.decisiones ?? vacia.decisiones,
     movimientos: entrada.movimientos ?? vacia.movimientos,
     seguimientos: entrada.seguimientos ?? vacia.seguimientos,
-    ajustes: { ...AJUSTES_POR_DEFECTO, ...(entrada.ajustes ?? {}) },
+    ajustes: { ...ajustesPorDefecto(), ...(entrada.ajustes ?? {}) },
     actualizadoEn: entrada.actualizadoEn ?? vacia.actualizadoEn,
   };
 }
@@ -64,7 +75,7 @@ export function exportarJSON(db: BaseDatos): string {
 export function importarJSON(texto: string): BaseDatos {
   const datos = JSON.parse(texto) as Partial<BaseDatos>;
   if (typeof datos !== 'object' || datos === null || !Array.isArray(datos.clientes)) {
-    throw new Error('El archivo no tiene el formato de Clienta Manager.');
+    throw new Error('El archivo no tiene el formato de Gremio.');
   }
   return migrar(datos);
 }

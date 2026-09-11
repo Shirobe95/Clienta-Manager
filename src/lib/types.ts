@@ -1,4 +1,4 @@
-/** Modelo de datos de Clienta Manager. Todo local-first: un unico documento JSON. */
+/** Modelo de datos de Gremio. Todo local-first: un unico documento JSON. */
 
 export type ID = string;
 /** Fecha en formato YYYY-MM-DD. */
@@ -153,6 +153,10 @@ export interface Ajustes {
   irpfPorDefecto: number;
   diasVencimiento: number;
   objetivoAnual?: number;
+  /** Prefijo de la serie de facturacion, por ejemplo "2026" en 2026-007. */
+  serieFactura: string;
+  /** Digitos a los que se rellena el numero: 3 -> 007. */
+  digitosFactura: number;
 }
 
 export interface BaseDatos {
@@ -167,13 +171,17 @@ export interface BaseDatos {
   actualizadoEn: ISODateTime;
 }
 
-export const AJUSTES_POR_DEFECTO: Ajustes = {
-  moneda: 'EUR',
-  locale: 'es-ES',
-  ivaPorDefecto: 21,
-  irpfPorDefecto: 0,
-  diasVencimiento: 30,
-};
+export function ajustesPorDefecto(): Ajustes {
+  return {
+    moneda: 'EUR',
+    locale: 'es-ES',
+    ivaPorDefecto: 21,
+    irpfPorDefecto: 0,
+    diasVencimiento: 30,
+    serieFactura: String(new Date().getFullYear()),
+    digitosFactura: 3,
+  };
+}
 
 export const DB_VERSION = 1;
 
@@ -186,7 +194,7 @@ export function baseDatosVacia(): BaseDatos {
     decisiones: [],
     movimientos: [],
     seguimientos: [],
-    ajustes: { ...AJUSTES_POR_DEFECTO },
+    ajustes: ajustesPorDefecto(),
     actualizadoEn: new Date().toISOString(),
   };
 }

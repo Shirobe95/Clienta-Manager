@@ -259,6 +259,8 @@ export function BotonBorrar({ onBorrar, etiqueta = 'Eliminar' }: { onBorrar: () 
     <button
       type="button"
       className="btn peligro pequeno"
+      title={etiqueta || 'Eliminar'}
+      aria-label={etiqueta || 'Eliminar'}
       onClick={() => {
         if (confirm('¿Seguro que quieres eliminarlo? Esta acción no se puede deshacer.')) onBorrar();
       }}

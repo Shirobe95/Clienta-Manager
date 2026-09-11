@@ -1,5 +1,5 @@
 import { hoy, sumarDias, sumarMeses } from './format';
-import { AJUSTES_POR_DEFECTO, DB_VERSION } from './types';
+import { ajustesPorDefecto, DB_VERSION } from './types';
 import type { BaseDatos, Corte, Movimiento, Proyecto } from './types';
 
 /**
@@ -10,6 +10,7 @@ export function datosEjemplo(): BaseDatos {
   const h = hoy();
   const ahora = new Date().toISOString();
   const mesPasado = (n: number) => sumarMeses(h, -n);
+  const serie = h.slice(0, 4);
 
   const clientes: BaseDatos['clientes'] = [
     {
@@ -188,6 +189,22 @@ export function datosEjemplo(): BaseDatos {
       orden: 2,
       creadoEn: ahora,
     },
+    {
+      id: 'cor_demo_6',
+      proyectoId: 'pro_demo_3',
+      codigo: 'EXTRA',
+      titulo: 'Migración de hosting',
+      objetivo: 'Mover el sitio a un alojamiento con copias diarias y certificado gestionado.',
+      estado: 'aceptado',
+      fechaObjetivo: sumarDias(h, -8),
+      importe: 480,
+      criterios: [
+        { id: 'cri_12', texto: 'Migración sin cortes de servicio', hecho: true },
+        { id: 'cri_13', texto: 'Copias diarias verificadas', hecho: true },
+      ],
+      orden: 1,
+      creadoEn: ahora,
+    },
   ];
 
   const decisiones: BaseDatos['decisiones'] = [
@@ -254,27 +271,29 @@ export function datosEjemplo(): BaseDatos {
   const movimientos: Movimiento[] = [
     cobro('mov_demo_1', 'cli_demo_1', 'pro_demo_1', 'FutonHUB C1 — Modelo de datos', 2400, mesPasado(3), 'pagado', {
       corteId: 'cor_demo_1',
-      numeroFactura: '2025-014',
+      numeroFactura: `${serie}-003`,
     }),
     cobro('mov_demo_2', 'cli_demo_1', 'pro_demo_1', 'FutonHUB C2 — Panel de catálogo', 2400, sumarDias(h, -12), 'pendiente', {
       corteId: 'cor_demo_2',
-      numeroFactura: '2025-021',
+      numeroFactura: `${serie}-007`,
     }),
     cobro('mov_demo_3', 'cli_demo_2', 'pro_demo_2', 'Web corporativa C1', 1700, mesPasado(6), 'pagado', {
-      numeroFactura: '2025-008',
+      corteId: 'cor_demo_4',
+      numeroFactura: `${serie}-001`,
     }),
     cobro('mov_demo_4', 'cli_demo_2', 'pro_demo_2', 'Web corporativa C2', 1700, mesPasado(3), 'pagado', {
-      numeroFactura: '2025-013',
+      corteId: 'cor_demo_5',
+      numeroFactura: `${serie}-004`,
     }),
     cobro('mov_demo_5', 'cli_demo_3', 'pro_demo_3', 'Mantenimiento — trimestre', 450, mesPasado(4), 'pagado', {
-      numeroFactura: '2025-010',
+      numeroFactura: `${serie}-002`,
     }),
     cobro('mov_demo_6', 'cli_demo_3', 'pro_demo_3', 'Mantenimiento — trimestre', 450, mesPasado(1), 'pagado', {
-      numeroFactura: '2025-018',
+      numeroFactura: `${serie}-006`,
     }),
     cobro('mov_demo_7', 'cli_demo_3', 'pro_demo_3', 'Horas extra de soporte', 320, sumarDias(h, -52), 'pendiente', {
       fechaVencimiento: sumarDias(h, -22),
-      numeroFactura: '2025-019',
+      numeroFactura: `${serie}-005`,
     }),
     cobro('mov_demo_8', 'cli_demo_4', undefined, 'Propuesta app de reservas', 1500, h, 'borrador'),
     {
@@ -358,7 +377,7 @@ export function datosEjemplo(): BaseDatos {
     decisiones,
     movimientos,
     seguimientos,
-    ajustes: { ...AJUSTES_POR_DEFECTO, objetivoAnual: 24000 },
+    ajustes: { ...ajustesPorDefecto(), serieFactura: serie, objetivoAnual: 24000 },
     actualizadoEn: ahora,
   };
 }

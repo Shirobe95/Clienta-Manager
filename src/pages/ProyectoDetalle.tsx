@@ -6,6 +6,7 @@ import { TablaMovimientos } from '../components/TablaMovimientos';
 import { FormCorte, FormDecision, FormMovimiento, FormProyecto } from '../components/formularios';
 import { BotonBorrar, Insignia, Kpi, Panel, Pestanas, Vacio } from '../components/ui';
 import { estadosCorte, estadosDecision, estadosProyecto, modelosFacturacion } from '../lib/labels';
+import { conceptoDeCorte, cortesSinFacturar } from '../lib/facturacion';
 import { progresoProyecto, totalConImpuestos } from '../lib/metrics';
 import { useFormato } from '../state/formato';
 import { useAlmacen } from '../state/store';
@@ -45,10 +46,15 @@ export function ProyectoDetalle() {
     .filter((m) => m.tipo === 'cobro' && m.estado === 'pagado')
     .reduce((suma, m) => suma + totalConImpuestos(m), 0);
   const progreso = progresoProyecto(cortes);
+  const idsSinFacturar = new Set(
+    cortesSinFacturar(db)
+      .filter((x) => x.proyecto.id === proyecto.id)
+      .map((x) => x.corte.id),
+  );
   const ep = estadosProyecto.de(proyecto.estado);
 
   const abrirCobroDeCorte = (c: Corte) => {
-    setContextoMovimiento({ corteId: c.id, concepto: `${proyecto.nombre} · ${c.codigo} ${c.titulo}`, importe: c.importe });
+    setContextoMovimiento({ corteId: c.id, concepto: conceptoDeCorte(proyecto, c), importe: c.importe });
     setFormMovimiento('nuevo');
   };
 
@@ -195,6 +201,7 @@ export function ProyectoDetalle() {
                           <span className="titulo">{c.titulo}</span>
                           <Insignia texto={ec.texto} tono={ec.tono} />
                           {c.importe ? <span className="etiqueta">{dinero(c.importe)}</span> : null}
+                          {idsSinFacturar.has(c.id) && <Insignia texto="Sin facturar" tono="aviso" />}
                         </div>
                         {c.objetivo && <div className="meta pre-linea" style={{ marginTop: 4 }}>{c.objetivo}</div>}
                         {c.fueraDeAlcance && (
@@ -372,6 +379,7 @@ export function ProyectoDetalle() {
           clientes={db.clientes}
           proyectos={db.proyectos}
           cortes={db.cortes}
+          movimientos={db.movimientos}
           ajustes={db.ajustes}
           contexto={{ clienteId: proyecto.clienteId, proyectoId: proyecto.id, ...contextoMovimiento }}
           onCerrar={() => {

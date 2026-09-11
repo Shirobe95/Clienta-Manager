@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Cabecera } from '../components/Cabecera';
 import { GraficoBarras } from '../components/GraficoBarras';
@@ -17,6 +18,9 @@ import {
 } from '../lib/metrics';
 import { useFormato } from '../state/formato';
 import { useAlmacen } from '../state/store';
+import { FormMovimiento } from '../components/formularios';
+import { conceptoDeCorte, cortesSinFacturar } from '../lib/facturacion';
+import type { CorteSinFacturar } from '../lib/facturacion';
 
 const SERIES: SerieGrafico[] = [
   { clave: 'cobrado', texto: 'Cobrado', color: 'var(--serie-cobrado)' },
@@ -25,7 +29,8 @@ const SERIES: SerieGrafico[] = [
 ];
 
 export function Dashboard() {
-  const { db } = useAlmacen();
+  const { db, guardar } = useAlmacen();
+  const [facturando, setFacturando] = useState<CorteSinFacturar | null>(null);
   const { dinero, fecha: fmtFecha, moneda, locale } = useFormato();
   const fecha = hoy();
 
@@ -34,6 +39,7 @@ export function Dashboard() {
   const vencimientos = cobrosPorVencer(db, fecha, 30).slice(0, 6);
   const agenda = seguimientosProximos(db, fecha, 45).slice(0, 6);
   const ranking = rankingClientes(db, fecha, 5);
+  const sinFacturar = cortesSinFacturar(db);
   const cortesVivos = db.cortes
     .filter((c) => c.estado === 'en_curso' || c.estado === 'en_revision')
     .sort((a, b) => (a.fechaObjetivo ?? '9999').localeCompare(b.fechaObjetivo ?? '9999'))
@@ -112,6 +118,42 @@ export function Dashboard() {
             }
           />
         </div>
+
+        {sinFacturar.length > 0 && (
+          <Panel
+            titulo="Cortes aceptados pendientes de facturar"
+            icono="aviso"
+            sinRelleno
+            pie={
+              <div className="panel-cuerpo pequeno texto-3" style={{ borderTop: '1px solid var(--borde)' }}>
+                Total sin facturar:{' '}
+                <strong className="num texto-2">
+                  {dinero(sinFacturar.reduce((suma, x) => suma + (x.corte.importe ?? 0), 0))}
+                </strong>
+              </div>
+            }
+          >
+            <div className="lista">
+              {sinFacturar.map((x) => (
+                <div className="lista-item" key={x.corte.id}>
+                  <span className="etiqueta mono">{x.corte.codigo}</span>
+                  <div className="crecer">
+                    <div className="titulo recorte">{x.corte.titulo}</div>
+                    <div className="meta recorte">
+                      <Link to={`/proyectos/${x.proyecto.id}`}>{x.proyecto.nombre}</Link>
+                      {x.cliente ? ` · ${x.cliente.nombre}` : ''}
+                    </div>
+                  </div>
+                  <span className="num">{dinero(x.corte.importe ?? 0)}</span>
+                  <button type="button" className="btn pequeno" onClick={() => setFacturando(x)}>
+                    <Icono nombre="cobros" />
+                    Facturar
+                  </button>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        )}
 
         <Panel titulo="Evolución de los últimos 12 meses" icono="metricas">
           <GraficoBarras datos={serie} series={SERIES} moneda={moneda} locale={locale} />
@@ -245,6 +287,28 @@ export function Dashboard() {
           </Panel>
         </div>
       </div>
+
+      {facturando && (
+        <FormMovimiento
+          clientes={db.clientes}
+          proyectos={db.proyectos}
+          cortes={db.cortes}
+          movimientos={db.movimientos}
+          ajustes={db.ajustes}
+          contexto={{
+            clienteId: facturando.cliente?.id,
+            proyectoId: facturando.proyecto.id,
+            corteId: facturando.corte.id,
+            concepto: conceptoDeCorte(facturando.proyecto, facturando.corte),
+            importe: facturando.corte.importe,
+          }}
+          onCerrar={() => setFacturando(null)}
+          onGuardar={(m) => {
+            guardar('movimientos', m);
+            setFacturando(null);
+          }}
+        />
+      )}
     </>
   );
 }

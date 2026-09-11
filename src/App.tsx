@@ -61,8 +61,8 @@ export function App() {
             <Icono nombre="rayo" tamano={16} />
           </span>
           <div>
-            <div className="marca-nombre">Clienta</div>
-            <div className="marca-sub">Manager</div>
+            <div className="marca-nombre">Gremio</div>
+            <div className="marca-sub">Panel de encargos</div>
           </div>
         </div>
 

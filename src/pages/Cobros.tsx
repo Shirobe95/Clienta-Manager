@@ -3,7 +3,8 @@ import { Cabecera } from '../components/Cabecera';
 import { Icono } from '../components/Icono';
 import { TablaMovimientos } from '../components/TablaMovimientos';
 import { FormMovimiento } from '../components/formularios';
-import { Buscador, Kpi, Panel, Selector } from '../components/ui';
+import { Buscador, Insignia, Kpi, Panel, Selector } from '../components/ui';
+import { movimientosACSV, revisarNumeracion } from '../lib/facturacion';
 import { hoy } from '../lib/format';
 import { estadosMovimiento } from '../lib/labels';
 import { estadoCalculado, totalConImpuestos } from '../lib/metrics';
@@ -38,6 +39,21 @@ export function Cobros() {
       .sort((a, b) => b.fechaEmision.localeCompare(a.fechaEmision));
   }, [db.movimientos, busqueda, estado, tipo, clienteId, fecha]);
 
+  const avisos = useMemo(() => revisarNumeracion(db.movimientos, db.ajustes), [db.movimientos, db.ajustes]);
+  const huecos = avisos.filter((a) => a.tipo === 'hueco');
+
+  /** Descarga la vista actual, no todo el histórico: lo que ves es lo que exportas. */
+  const exportarCSV = () => {
+    const bom = '\uFEFF';
+    const blob = new Blob([bom + movimientosACSV(lista, db)], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = `gremio-movimientos-${fecha}.csv`;
+    enlace.click();
+    URL.revokeObjectURL(url);
+  };
+
   const totales = useMemo(() => {
     let cobrado = 0;
     let pendiente = 0;
@@ -58,10 +74,16 @@ export function Cobros() {
         titulo="Cobros y pagos"
         subtitulo={`${lista.length} movimientos en la vista actual`}
         acciones={
-          <button type="button" className="btn primario" onClick={() => setFormulario('nuevo')}>
-            <Icono nombre="mas" />
-            Nuevo movimiento
-          </button>
+          <>
+            <button type="button" className="btn" onClick={exportarCSV} disabled={lista.length === 0}>
+              <Icono nombre="descargar" />
+              Exportar CSV
+            </button>
+            <button type="button" className="btn primario" onClick={() => setFormulario('nuevo')}>
+              <Icono nombre="mas" />
+              Nuevo movimiento
+            </button>
+          </>
         }
       />
 
@@ -111,6 +133,35 @@ export function Cobros() {
           </div>
         </div>
 
+        {avisos.length > 0 && (
+          <Panel titulo="Revisión de la numeración" icono="aviso" sinRelleno>
+            <div className="lista">
+              {avisos
+                .filter((a) => a.tipo === 'duplicado')
+                .map((aviso) => (
+                  <div className="lista-item" key={`dup-${aviso.numero}`}>
+                    <Insignia texto="Duplicado" tono="critico" />
+                    <span className="mono">{aviso.numero}</span>
+                    <span className="meta crecer">{aviso.detalle}</span>
+                  </div>
+                ))}
+              {huecos.length > 0 && (
+                <div className="lista-item">
+                  <Insignia texto="Huecos" tono="aviso" />
+                  <div className="crecer">
+                    <div className="mono">{huecos.map((a) => a.numero).join(', ')}</div>
+                    <div className="meta">
+                      {huecos.length === 1
+                        ? 'Este número no está asignado a ningún movimiento.'
+                        : `${huecos.length} números de la serie sin asignar.`}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </Panel>
+        )}
+
         <Panel sinRelleno>
           <TablaMovimientos movimientos={lista} onEditar={(m) => setFormulario(m)} />
         </Panel>
@@ -122,6 +173,7 @@ export function Cobros() {
           clientes={db.clientes}
           proyectos={db.proyectos}
           cortes={db.cortes}
+          movimientos={db.movimientos}
           ajustes={db.ajustes}
           contexto={clienteId ? { clienteId } : undefined}
           onCerrar={() => setFormulario(null)}
