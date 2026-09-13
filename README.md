@@ -23,19 +23,33 @@ trabajo freelance. Todo vive en el navegador (local-first), sin servidor ni cuen
 - **Métricas**: cobrado del mes y del año, pendiente, vencido, objetivo anual, evolución a 12 meses,
   ranking de clientes y entregas (módulos aceptados, importe medio por módulo y % dentro de plazo).
 
-## Arrancar
+## Cómo usarlo
+
+La forma más cómoda para el día a día es **un único archivo HTML** que se abre con doble clic, sin
+servidor, sin instalar nada y sin conexión:
 
 ```bash
 npm install
-npm run dev      # http://localhost:5173
+npm run empaquetar   # genera dist/gremio.html
 ```
 
-Otros comandos:
+Guarda ese `gremio.html` donde quieras y ábrelo en el navegador. Para tenerlo a mano, márcalo como
+favorito o créale un acceso directo.
+
+Dos avisos importantes sobre dónde viven los datos:
+
+- **Los datos están en el navegador, no en el archivo.** Mover o renombrar el `gremio.html` no los
+  pierde, pero abrirlo en otro navegador, en otro perfil o en otro equipo muestra una app vacía. Para
+  llevarte el trabajo de un sitio a otro: exporta el JSON en uno e impórtalo en el otro.
+- **Dos copias del archivo no son dos bases de datos.** Comparten el mismo almacenamiento local.
+
+Para desarrollar:
 
 ```bash
-npm run build    # typecheck + bundle de produccion en dist/
-npm run preview  # sirve el bundle ya construido
-npm test         # tests de la capa de metricas (vitest)
+npm run dev        # http://localhost:5173, con recarga en caliente
+npm run build      # typecheck + bundle en dist/
+npm run preview    # sirve el bundle ya construido
+npm test           # pruebas de la lógica de negocio (vitest)
 ```
 
 Para ver el panel con contenido: **Ajustes → Cargar datos de ejemplo**.

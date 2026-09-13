@@ -236,7 +236,15 @@ export function Dashboard() {
         )}
 
         <Panel titulo="Evolución de los últimos 12 meses" icono="metricas">
-          <GraficoBarras datos={serie} series={SERIES} moneda={moneda} locale={locale} />
+          {db.movimientos.length === 0 ? (
+            <Vacio
+              icono="metricas"
+              titulo="Sin movimientos que representar"
+              descripcion="En cuanto registres cobros y pagos verás aquí la evolución mes a mes."
+            />
+          ) : (
+            <GraficoBarras datos={serie} series={SERIES} moneda={moneda} locale={locale} />
+          )}
         </Panel>
 
         <Panel titulo={`Entregas ${anio}`} icono="brujula">

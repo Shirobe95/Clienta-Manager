@@ -60,6 +60,13 @@ const Contexto = createContext<ContextoAlmacen | null>(null);
 export function ProveedorAlmacen({ children }: { children: ReactNode }) {
   const [db, setDb] = useState<BaseDatos>(() => almacenLocal.leer() ?? baseDatosVacia());
   const primeraCarga = useRef(true);
+  /**
+   * Espejo del documento actual. Las instantaneas son un efecto secundario y no
+   * pueden ir dentro del actualizador de setDb: React lo invoca dos veces en
+   * desarrollo y saldrian duplicadas.
+   */
+  const documento = useRef(db);
+  documento.current = db;
 
   useEffect(() => {
     if (primeraCarga.current) {
@@ -87,18 +94,14 @@ export function ProveedorAlmacen({ children }: { children: ReactNode }) {
   }, []);
 
   const reemplazarTodo = useCallback((nueva: BaseDatos, motivo: MotivoInstantanea = 'antes_de_importar') => {
-    setDb((actual) => {
-      crearInstantanea(actual, motivo);
-      return { ...nueva, actualizadoEn: new Date().toISOString() };
-    });
+    crearInstantanea(documento.current, motivo);
+    setDb({ ...nueva, actualizadoEn: new Date().toISOString() });
   }, []);
 
   const reiniciar = useCallback(() => {
-    setDb((actual) => {
-      crearInstantanea(actual, 'antes_de_reiniciar');
-      almacenLocal.borrar();
-      return baseDatosVacia();
-    });
+    crearInstantanea(documento.current, 'antes_de_reiniciar');
+    almacenLocal.borrar();
+    setDb(baseDatosVacia());
   }, []);
 
   const marcarCopiaHecha = useCallback(() => {
@@ -116,12 +119,7 @@ export function ProveedorAlmacen({ children }: { children: ReactNode }) {
   useEffect(() => {
     const ultima = listarInstantaneas()[0];
     const pasoUnDia = !ultima || Date.now() - new Date(ultima.creadoEn).getTime() > 86_400_000;
-    setDb((actual) => {
-      if (pasoUnDia && actual.clientes.length + actual.movimientos.length > 0) {
-        crearInstantanea(actual, 'automatica');
-      }
-      return actual;
-    });
+    if (pasoUnDia) crearInstantanea(documento.current, 'automatica');
   }, []);
 
   const valor = useMemo<ContextoAlmacen>(

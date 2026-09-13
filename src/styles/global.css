@@ -410,8 +410,14 @@ table.tabla .num { text-align: right; font-variant-numeric: tabular-nums; white-
     border-bottom: 1px solid var(--borde);
     padding: 10px;
   }
-  .marca, .nav-grupo, .lateral-pie, .nav-item .cuenta { display: none; }
-  .lateral > div { display: flex; gap: 4px; }
+  /* Mas especifico que ".lateral > div", que si no volveria a mostrar la marca. */
+  .lateral > .marca,
+  .nav-grupo,
+  .lateral-pie,
+  .nav-item .cuenta { display: none; }
+  /* Sin encoger: la barra se desplaza en horizontal en vez de apilar iconos. */
+  .lateral > div { display: flex; gap: 4px; flex: none; }
+  .lateral .nav-item { flex: none; }
   .nav-item { white-space: nowrap; }
   .pagina { padding: 16px; }
   .cabecera { padding: 14px 16px; }

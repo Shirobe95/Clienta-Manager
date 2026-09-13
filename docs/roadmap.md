@@ -55,6 +55,16 @@ como forma de moverse entre equipos.
 - Instantáneas dentro del navegador: una al abrir cada día y una antes de cada operación destructiva,
   con restauración y borrado. No sustituyen a la copia en archivo, y el texto de la app lo dice.
 
+## Remate antes de las pruebas (hecho)
+
+- `npm run empaquetar` genera un `dist/gremio.html` con el CSS y el JavaScript dentro, que se abre con
+  doble clic: sin servidor, sin instalación y sin conexión. Los módulos ES cargados desde `file://` los
+  bloquea el navegador por CORS, pero un módulo escrito en línea sí se ejecuta.
+- Los efectos secundarios salen de los actualizadores de estado: React los invoca dos veces en
+  desarrollo y las instantáneas salían duplicadas.
+- Barra de navegación en móvil: una sola fila de 67 px en vez de tres, y sin desbordes en ninguna vista.
+- Estado vacío en el gráfico del panel cuando todavía no hay movimientos.
+
 ## C6 — Portal y automatización
 
 - Vista pública por proyecto para el cliente: estado de cortes y criterios aceptados.

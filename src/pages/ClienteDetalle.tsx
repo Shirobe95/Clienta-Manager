@@ -8,8 +8,7 @@ import { FormCliente, FormMovimiento, FormProyecto, FormSeguimiento } from '../c
 import { BotonBorrar, Insignia, Kpi, Panel, Pestanas, Vacio } from '../components/ui';
 import { hoy, iniciales } from '../lib/format';
 import { estadosCliente, estadosProyecto, modelosFacturacion } from '../lib/labels';
-import { progresoProyecto, resumenCliente } from '../lib/metrics';
-import { totalConImpuestos } from '../lib/metrics';
+import { progresoProyecto, resumenCliente, totalConImpuestos } from '../lib/metrics';
 import { movimientoDeMensualidad, periodosPendientes, suscripcionVigente } from '../lib/suscripciones';
 import { useFormato } from '../state/formato';
 import { useAlmacen } from '../state/store';
