@@ -21,6 +21,7 @@ import { useAlmacen } from '../state/store';
 import { FormMovimiento } from '../components/formularios';
 import { conceptoDeCorte, cortesSinFacturar } from '../lib/facturacion';
 import { resumenEntregas } from '../lib/entregas';
+import { estadoCopia } from '../lib/copias';
 import { mensualidadesPendientes, movimientoDeMensualidad, recurrenteMensual } from '../lib/suscripciones';
 import type { MensualidadPendiente } from '../lib/suscripciones';
 import type { CorteSinFacturar } from '../lib/facturacion';
@@ -46,6 +47,7 @@ export function Dashboard() {
   const entregas = resumenEntregas(db, fecha);
   const mensualidades = mensualidadesPendientes(db, fecha);
   const recurrente = recurrenteMensual(db, fecha);
+  const copia = estadoCopia(db);
 
   /**
    * Emite las cuotas en cadena: cada movimiento se numera contando el anterior,
@@ -101,6 +103,23 @@ export function Dashboard() {
             />
           </Panel>
         ) : null}
+
+        {copia.avisar && (
+          <div className="panel panel-cuerpo pequeno fila" style={{ borderColor: 'var(--aviso)', gap: 10 }}>
+            <span style={{ color: 'var(--aviso)', display: 'flex' }}>
+              <Icono nombre="aviso" />
+            </span>
+            <span className="texto-2 crecer">
+              {copia.dias === null
+                ? 'Todavía no has exportado ninguna copia de tus datos.'
+                : `Hace ${copia.dias} días de la última copia y hay cambios sin guardar en un archivo.`}
+            </span>
+            <Link to="/ajustes" className="btn pequeno">
+              <Icono nombre="descargar" />
+              Hacer copia
+            </Link>
+          </div>
+        )}
 
         <div className="grid grid-kpi">
           <Kpi

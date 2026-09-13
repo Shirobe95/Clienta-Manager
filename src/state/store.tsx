@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { crearInstantanea, listarInstantaneas } from '../lib/copias';
+import type { MotivoInstantanea } from '../lib/copias';
 import { almacenLocal } from '../lib/storage';
 import { baseDatosVacia } from '../lib/types';
 import type {
@@ -46,8 +48,11 @@ interface ContextoAlmacen {
   /** Elimina por id y limpia lo que dependa del elemento borrado. */
   eliminar(coleccion: Coleccion, id: ID): void;
   guardarAjustes(ajustes: Ajustes): void;
-  reemplazarTodo(db: BaseDatos): void;
+  /** Sustituye el documento entero. Antes guarda una instantanea de lo que habia. */
+  reemplazarTodo(db: BaseDatos, motivo?: MotivoInstantanea): void;
   reiniciar(): void;
+  /** Apunta que se acaba de exportar una copia a un archivo. */
+  marcarCopiaHecha(): void;
 }
 
 const Contexto = createContext<ContextoAlmacen | null>(null);
@@ -81,18 +86,47 @@ export function ProveedorAlmacen({ children }: { children: ReactNode }) {
     setDb((actual) => ({ ...actual, ajustes, actualizadoEn: new Date().toISOString() }));
   }, []);
 
-  const reemplazarTodo = useCallback((nueva: BaseDatos) => {
-    setDb({ ...nueva, actualizadoEn: new Date().toISOString() });
+  const reemplazarTodo = useCallback((nueva: BaseDatos, motivo: MotivoInstantanea = 'antes_de_importar') => {
+    setDb((actual) => {
+      crearInstantanea(actual, motivo);
+      return { ...nueva, actualizadoEn: new Date().toISOString() };
+    });
   }, []);
 
   const reiniciar = useCallback(() => {
-    almacenLocal.borrar();
-    setDb(baseDatosVacia());
+    setDb((actual) => {
+      crearInstantanea(actual, 'antes_de_reiniciar');
+      almacenLocal.borrar();
+      return baseDatosVacia();
+    });
+  }, []);
+
+  const marcarCopiaHecha = useCallback(() => {
+    // La misma marca en los dos campos: si no, el documento quedaria "cambiado"
+    // justo despues de exportarlo y el aviso saltaria sin motivo.
+    const marca = new Date().toISOString();
+    setDb((actual) => ({
+      ...actual,
+      ajustes: { ...actual.ajustes, ultimaCopia: marca },
+      actualizadoEn: marca,
+    }));
+  }, []);
+
+  // Una instantanea al abrir, como mucho una al dia, para poder deshacer un destrozo.
+  useEffect(() => {
+    const ultima = listarInstantaneas()[0];
+    const pasoUnDia = !ultima || Date.now() - new Date(ultima.creadoEn).getTime() > 86_400_000;
+    setDb((actual) => {
+      if (pasoUnDia && actual.clientes.length + actual.movimientos.length > 0) {
+        crearInstantanea(actual, 'automatica');
+      }
+      return actual;
+    });
   }, []);
 
   const valor = useMemo<ContextoAlmacen>(
-    () => ({ db, guardar, eliminar, guardarAjustes, reemplazarTodo, reiniciar }),
-    [db, guardar, eliminar, guardarAjustes, reemplazarTodo, reiniciar],
+    () => ({ db, guardar, eliminar, guardarAjustes, reemplazarTodo, reiniciar, marcarCopiaHecha }),
+    [db, guardar, eliminar, guardarAjustes, reemplazarTodo, reiniciar, marcarCopiaHecha],
   );
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;

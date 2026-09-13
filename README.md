@@ -44,7 +44,7 @@ Para ver el panel con contenido: **Ajustes → Cargar datos de ejemplo**.
 
 ```
 src/
-  lib/        modelo, formato, metricas, facturacion, entregas, suscripciones, persistencia, ejemplo
+  lib/        modelo, formato, metricas, facturacion, entregas, suscripciones, copias, ejemplo
   state/      contexto de React sobre el documento local (CRUD + borrado en cascada)
   components/ sistema de UI (paneles, KPIs, tablas, formularios, grafico)
   pages/      una vista por seccion del panel
@@ -70,6 +70,12 @@ Decisiones que conviene conocer antes de tocar el código:
   números ya emitidos de la serie y toma el mayor más uno: así no se desincroniza al importar una copia
   ni al borrar un movimiento. Un corte se factura desde el panel o desde su proyecto, y solo entonces se
   reserva el número: nunca se crea un cobro sin que tú lo confirmes.
+- **El aviso de copia mira los cambios, no solo el calendario.** `estadoCopia` compara `actualizadoEn`
+  con la fecha de la última exportación: sin cambios no molesta aunque lleves un mes sin exportar. Al
+  exportar se escribe la misma marca de tiempo en los dos campos, para que el aviso no salte de nuevo
+  justo después de hacer la copia.
+- **Fusionar nunca borra.** La unión es por id y solo añade o sustituye, así que importar una copia
+  antigua no puede hacer desaparecer trabajo reciente que solo esté en este navegador.
 - **Las mensualidades no se cobran solas.** `periodosPendientes` deduce los meses vencidos comparando el
   inicio del acuerdo con los cobros que ya llevan ese `periodo`, así que los movimientos emitidos son la
   fuente de verdad y no hay contador que se desincronice. La app te enseña lo que toca emitir; emites tú.
@@ -87,10 +93,21 @@ Decisiones que conviene conocer antes de tocar el código:
 
 ## Datos y copias de seguridad
 
-Los datos no salen del navegador. No hay sincronización entre dispositivos ni backup automático:
-**exporta el JSON desde Ajustes** con cierta regularidad. La importación reemplaza todo el contenido.
+Los datos no salen del navegador y no hay sincronización entre dispositivos: **el archivo JSON que
+exportas desde Ajustes es lo único que sobrevive** a borrar los datos del sitio o cambiar de equipo.
+La app lleva la cuenta de cuándo hiciste la última copia y avisa en el panel cuando hay cambios sin
+guardar y ha pasado el plazo que configures.
 
-Borrar los datos del sitio en el navegador borra también el contenido de la aplicación.
+Al importar un archivo se ve primero un resumen —cuántos registros son nuevos, cuántos cambian y
+cuántos están igual— y se elige entre dos modos:
+
+- **Fusionar**: añade lo que falta y actualiza lo que coincide por id. No borra nada de lo que solo
+  existe en este navegador, y respeta las preferencias del dispositivo.
+- **Reemplazar todo**: deja el documento exactamente como el archivo, preferencias incluidas.
+
+Además se guardan **instantáneas** dentro del propio navegador (una al abrir cada día, y una antes de
+cada operación destructiva: importar, cargar el ejemplo, restaurar o borrar). Sirven para deshacer un
+destrozo, pero viven en el mismo sitio que los datos: no son una copia de seguridad.
 
 ## Estado de las pruebas
 
@@ -98,4 +115,5 @@ Borrar los datos del sitio en el navegador borra también el contenido de la apl
 ranking, vencimientos, avance), facturación (numeración, huecos y duplicados, cortes sin facturar, CSV y
 recordatorios), entregas (fecha automática, puntualidad, cuadre de presupuesto, plantillas y
 ampliaciones) y suscripciones (vigencia, periodos pendientes, generación de cuotas y recurrente
-mensual). La UI no tiene tests automatizados todavía; se verifica a mano en el navegador.
+mensual) y copias (estado del aviso, fusión, instantáneas). La UI no tiene tests automatizados
+todavía; se verifica a mano en el navegador.

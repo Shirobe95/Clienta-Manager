@@ -204,6 +204,10 @@ export interface Ajustes {
   serieFactura: string;
   /** Digitos a los que se rellena el numero: 3 -> 007. */
   digitosFactura: number;
+  /** Cuando se exporto por ultima vez una copia a un archivo. */
+  ultimaCopia?: ISODateTime;
+  /** Dias sin copia a partir de los cuales el panel avisa. */
+  diasAvisoCopia: number;
 }
 
 export interface BaseDatos {
@@ -228,6 +232,7 @@ export function ajustesPorDefecto(): Ajustes {
     diasVencimiento: 30,
     serieFactura: String(new Date().getFullYear()),
     digitosFactura: 3,
+    diasAvisoCopia: 7,
   };
 }
 

@@ -1,6 +1,6 @@
 # Roadmap
 
-Estado: **C1, C2, C3 y C4 entregados**. Lo demás son propuestas, no compromisos.
+Estado: **C1 a C5 entregados**. Lo demás son propuestas, no compromisos.
 
 ## C1 — Panel base (hecho)
 
@@ -43,11 +43,17 @@ es la entrega, no el tiempo.
   numeración de una tanda sale correlativa.
 - KPI de recurrente mensual, visible solo si hay clientes con cuota.
 
-## C5 — Continuidad y multi-dispositivo
+## C5 — Copias, restauración e importación (hecho)
 
-- Adaptador de `AlmacenDatos` contra Supabase, con el local como caché.
-- Autenticación y sincronización con resolución de conflictos por marca de tiempo.
-- Copia automática a Google Drive.
+Supabase queda descartado por ahora: la app sigue siendo local, con la exportación y la importación
+como forma de moverse entre equipos.
+
+- Estado de la copia: cuándo fue la última, si hay cambios posteriores y aviso en el panel cuando pasa
+  el plazo configurado. Exportar anota la fecha.
+- Importación con vista previa (nuevos, actualizados, sin cambios) y dos modos: fusionar por id, que
+  nunca borra lo local, o reemplazar todo.
+- Instantáneas dentro del navegador: una al abrir cada día y una antes de cada operación destructiva,
+  con restauración y borrado. No sustituyen a la copia en archivo, y el texto de la app lo dice.
 
 ## C6 — Portal y automatización
 
@@ -62,3 +68,4 @@ es la entrega, no el tiempo.
 - Campo de moneda por cliente, para clientes fuera de la zona euro.
 - Etiquetas de riesgo: cliente que paga tarde de forma recurrente.
 - Control de horas y rentabilidad por tiempo: **descartado por ahora**, no encaja con cobrar por módulo.
+- Sincronización con Supabase o servidor propio: **descartado por ahora**, la app se queda local.
