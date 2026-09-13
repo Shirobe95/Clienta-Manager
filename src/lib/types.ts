@@ -124,6 +124,36 @@ export interface Plantilla {
   creadoEn: ISODateTime;
 }
 
+/**
+ * Flujo de una tarea: lo que queda por hacer, lo que se esta haciendo, lo que
+ * esta terminado y lo que ya tiene el cliente en sus manos.
+ */
+export type EstadoTarea = 'pendiente' | 'desarrollando' | 'completada' | 'subida' | 'cancelada';
+
+export type Prioridad = 'baja' | 'normal' | 'alta';
+
+/**
+ * Unidad de trabajo del dia a dia dentro de un proyecto, con su precio.
+ * A diferencia del corte, que es alcance vendido con criterios de aceptacion,
+ * una tarea es un encargo concreto que se hace, se termina y se sube.
+ */
+export interface Tarea {
+  id: ID;
+  proyectoId: ID;
+  /** Corte al que pertenece, si el proyecto trabaja por cortes. */
+  corteId?: ID;
+  titulo: string;
+  detalle?: string;
+  estado: EstadoTarea;
+  prioridad: Prioridad;
+  importe?: number;
+  fechaObjetivo?: ISODate;
+  /** Cuando paso a "subida". Se rellena sola. */
+  fechaSubida?: ISODate;
+  orden: number;
+  creadoEn: ISODateTime;
+}
+
 export type EstadoDecision = 'propuesta' | 'aceptada' | 'descartada' | 'revisar';
 
 /** Registro de decision al estilo ADR ligero. */
@@ -151,6 +181,7 @@ export interface Movimiento {
   clienteId?: ID;
   proyectoId?: ID;
   corteId?: ID;
+  tareaId?: ID;
   concepto: string;
   /** Base imponible, sin impuestos. */
   importe: number;
@@ -215,6 +246,7 @@ export interface BaseDatos {
   clientes: Cliente[];
   proyectos: Proyecto[];
   cortes: Corte[];
+  tareas: Tarea[];
   plantillas: Plantilla[];
   decisiones: Decision[];
   movimientos: Movimiento[];
@@ -244,6 +276,7 @@ export function baseDatosVacia(): BaseDatos {
     clientes: [],
     proyectos: [],
     cortes: [],
+    tareas: [],
     plantillas: [],
     decisiones: [],
     movimientos: [],

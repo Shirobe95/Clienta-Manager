@@ -314,8 +314,19 @@ table.tabla .num { text-align: right; font-variant-numeric: tabular-nums; white-
 .vacio .titulo { color: var(--texto-2); font-size: 14px; }
 
 /* ---------- Pestanas ---------- */
-.pestanas { display: flex; gap: 4px; border-bottom: 1px solid var(--borde); padding: 0 4px; }
+.pestanas {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--borde);
+  padding: 0 4px;
+  /* Se desplazan en horizontal: si no, en movil empujan la pagina a lo ancho. */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.pestanas::-webkit-scrollbar { display: none; }
 .pestana {
+  flex: none;
+  white-space: nowrap;
   padding: 9px 13px;
   border: none;
   background: none;

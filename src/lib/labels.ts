@@ -1,5 +1,7 @@
 import type {
   EstadoCliente,
+  EstadoTarea,
+  Prioridad,
   EstadoCorte,
   EstadoDecision,
   EstadoMovimientoCalculado,
@@ -50,6 +52,20 @@ export const estadosCorte = mapa<EstadoCorte>([
   { valor: 'en_revision', texto: 'En revisión', tono: 'aviso' },
   { valor: 'aceptado', texto: 'Aceptado', tono: 'ok' },
   { valor: 'rechazado', texto: 'Rechazado', tono: 'critico' },
+]);
+
+export const estadosTarea = mapa<EstadoTarea>([
+  { valor: 'pendiente', texto: 'Pendiente', tono: 'neutro' },
+  { valor: 'desarrollando', texto: 'Desarrollando', tono: 'acento' },
+  { valor: 'completada', texto: 'Completada', tono: 'info' },
+  { valor: 'subida', texto: 'Subida', tono: 'ok' },
+  { valor: 'cancelada', texto: 'Cancelada', tono: 'critico' },
+]);
+
+export const prioridades = mapa<Prioridad>([
+  { valor: 'alta', texto: 'Alta', tono: 'critico' },
+  { valor: 'normal', texto: 'Normal', tono: 'neutro' },
+  { valor: 'baja', texto: 'Baja', tono: 'neutro' },
 ]);
 
 export const estadosDecision = mapa<EstadoDecision>([

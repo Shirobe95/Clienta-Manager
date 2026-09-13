@@ -4,7 +4,15 @@ import { Cabecera } from '../components/Cabecera';
 import { hoy } from '../lib/format';
 import { Icono } from '../components/Icono';
 import { TablaMovimientos } from '../components/TablaMovimientos';
-import { FormCorte, FormDecision, FormMovimiento, FormProyecto, ModalPlantilla } from '../components/formularios';
+import { TableroTareas } from '../components/TableroTareas';
+import {
+  FormCorte,
+  FormDecision,
+  FormMovimiento,
+  FormProyecto,
+  FormTarea,
+  ModalPlantilla,
+} from '../components/formularios';
 import { BotonBorrar, Insignia, Kpi, Panel, Pestanas, Vacio } from '../components/ui';
 import { estadosCorte, estadosDecision, estadosProyecto, modelosFacturacion } from '../lib/labels';
 import {
@@ -15,24 +23,31 @@ import {
   resumenAmpliaciones,
 } from '../lib/entregas';
 import { conceptoDeCorte, cortesSinFacturar } from '../lib/facturacion';
+import { ajustarFechaSubida, conceptoDeTarea, resumenTareas, tareasSinFacturar } from '../lib/tareas';
 import { progresoProyecto, totalConImpuestos } from '../lib/metrics';
 import { useFormato } from '../state/formato';
 import { useAlmacen } from '../state/store';
-import type { Corte, Decision, Movimiento, Proyecto } from '../lib/types';
+import type { Corte, Decision, Movimiento, Proyecto, Tarea } from '../lib/types';
 
-type Pestana = 'vision' | 'cortes' | 'decisiones' | 'cobros';
+type Pestana = 'tareas' | 'vision' | 'cortes' | 'decisiones' | 'cobros';
 
 export function ProyectoDetalle() {
   const { id = '' } = useParams();
   const { db, guardar, eliminar } = useAlmacen();
   const { dinero, fecha: fmtFecha } = useFormato();
-  const [pestana, setPestana] = useState<Pestana>('vision');
+  const [pestana, setPestana] = useState<Pestana>('tareas');
   const [formProyecto, setFormProyecto] = useState<Proyecto | null>(null);
   const [formCorte, setFormCorte] = useState<Corte | 'nuevo' | null>(null);
+  const [formTarea, setFormTarea] = useState<Tarea | 'nueva' | null>(null);
   const [ampliando, setAmpliando] = useState<Corte | null>(null);
   const [formDecision, setFormDecision] = useState<Decision | 'nuevo' | null>(null);
   const [formMovimiento, setFormMovimiento] = useState<Movimiento | 'nuevo' | null>(null);
-  const [contextoMovimiento, setContextoMovimiento] = useState<{ corteId?: string; concepto?: string; importe?: number }>({});
+  const [contextoMovimiento, setContextoMovimiento] = useState<{
+    corteId?: string;
+    tareaId?: string;
+    concepto?: string;
+    importe?: number;
+  }>({});
   const [anadirDesdePlantilla, setAnadirDesdePlantilla] = useState(false);
 
   const proyecto = db.proyectos.find((p) => p.id === id);
@@ -42,6 +57,9 @@ export function ProyectoDetalle() {
   const cortes = db.cortes
     .filter((c) => c.proyectoId === proyecto.id)
     .sort((a, b) => a.orden - b.orden || a.codigo.localeCompare(b.codigo));
+  const tareas = db.tareas
+    .filter((t) => t.proyectoId === proyecto.id)
+    .sort((a, b) => a.orden - b.orden);
   const decisiones = db.decisiones
     .filter((d) => d.proyectoId === proyecto.id)
     .sort((a, b) => b.fecha.localeCompare(a.fecha));
@@ -58,6 +76,25 @@ export function ProyectoDetalle() {
   const progreso = progresoProyecto(cortes);
   const cuadre = cuadreProyecto(db, proyecto);
   const ampliaciones = resumenAmpliaciones(cortes);
+  const trabajo = resumenTareas(tareas);
+  const tareasPorFacturar = new Set(
+    tareasSinFacturar(db)
+      .filter((x) => x.proyecto.id === proyecto.id)
+      .map((x) => x.tarea.id),
+  );
+
+  /** Guardar una tarea apunta o retira su fecha de subida segun el estado. */
+  const guardarTarea = (t: Tarea) => guardar('tareas', ajustarFechaSubida(t, fecha));
+
+  const abrirCobroDeTarea = (t: Tarea) => {
+    setContextoMovimiento({
+      tareaId: t.id,
+      corteId: t.corteId,
+      concepto: conceptoDeTarea(proyecto, t, cortes.find((c) => c.id === t.corteId)),
+      importe: t.importe,
+    });
+    setFormMovimiento('nuevo');
+  };
   const fecha = hoy();
 
   /** Guardar un corte apunta o retira su fecha de entrega segun el estado. */
@@ -88,10 +125,17 @@ export function ProyectoDetalle() {
               <Icono nombre="editar" />
               Editar
             </button>
-            <button type="button" className="btn primario" onClick={() => setFormCorte('nuevo')}>
-              <Icono nombre="mas" />
-              Nuevo corte
-            </button>
+            {pestana === 'tareas' ? (
+              <button type="button" className="btn primario" onClick={() => setFormTarea('nueva')}>
+                <Icono nombre="mas" />
+                Nueva tarea
+              </button>
+            ) : (
+              <button type="button" className="btn primario" onClick={() => setFormCorte('nuevo')}>
+                <Icono nombre="mas" />
+                Nuevo corte
+              </button>
+            )}
           </>
         }
       />
@@ -130,6 +174,18 @@ export function ProyectoDetalle() {
           <Kpi etiqueta="Facturado" valor={dinero(facturado)} tono="acento" />
           <Kpi etiqueta="Cobrado" valor={dinero(cobrado)} tono="ok" pie={`Pendiente ${dinero(facturado - cobrado)}`} />
           <Kpi
+            etiqueta="Trabajo pendiente"
+            valor={trabajo.importePendiente > 0 ? dinero(trabajo.importePendiente) : String(trabajo.pendientes + trabajo.desarrollando)}
+            tono={trabajo.desarrollando > 0 ? 'acento' : 'neutro'}
+            pie={
+              tareas.length === 0
+                ? 'Sin tareas apuntadas'
+                : `${trabajo.desarrollando} en curso · ${trabajo.pendientes} por empezar · ${trabajo.subidas} subida${
+                    trabajo.subidas === 1 ? '' : 's'
+                  }`
+            }
+          />
+          <Kpi
             etiqueta="Avance por cortes"
             valor={`${progreso}%`}
             progreso={progreso}
@@ -158,12 +214,35 @@ export function ProyectoDetalle() {
           activa={pestana}
           onChange={setPestana}
           opciones={[
+            { valor: 'tareas', texto: 'Tareas', cuenta: trabajo.pendientes + trabajo.desarrollando },
             { valor: 'vision', texto: 'Visión general' },
             { valor: 'cortes', texto: 'Cortes', cuenta: cortes.length },
             { valor: 'decisiones', texto: 'Decisiones', cuenta: decisiones.length },
             { valor: 'cobros', texto: 'Cobros', cuenta: movimientos.length },
           ]}
         />
+
+        {pestana === 'tareas' && (
+          <Panel
+            titulo="Trabajo del proyecto"
+            icono="check"
+            sinRelleno
+            acciones={
+              <button type="button" className="btn pequeno" onClick={() => setFormTarea('nueva')}>
+                <Icono nombre="mas" />
+                Nueva tarea
+              </button>
+            }
+          >
+            <TableroTareas
+              tareas={tareas}
+              cortes={cortes}
+              idsSinFacturar={tareasPorFacturar}
+              onEditar={(t) => setFormTarea(t)}
+              onFacturar={abrirCobroDeTarea}
+            />
+          </Panel>
+        )}
 
         {pestana === 'vision' && (
           <div className="grid grid-2">
@@ -448,6 +527,20 @@ export function ProyectoDetalle() {
             );
             setAnadirDesdePlantilla(false);
             setPestana('cortes');
+          }}
+        />
+      )}
+
+      {formTarea && (
+        <FormTarea
+          inicial={formTarea === 'nueva' ? undefined : formTarea}
+          proyectoId={proyecto.id}
+          cortes={cortes}
+          siguienteOrden={tareas.length + 1}
+          onCerrar={() => setFormTarea(null)}
+          onGuardar={(t) => {
+            guardarTarea(t);
+            setFormTarea(null);
           }}
         />
       )}

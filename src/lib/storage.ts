@@ -59,6 +59,7 @@ export function migrar(entrada: Partial<BaseDatos>): BaseDatos {
     clientes: entrada.clientes ?? vacia.clientes,
     proyectos: entrada.proyectos ?? vacia.proyectos,
     cortes: entrada.cortes ?? vacia.cortes,
+    tareas: entrada.tareas ?? vacia.tareas,
     plantillas: entrada.plantillas ?? vacia.plantillas,
     decisiones: entrada.decisiones ?? vacia.decisiones,
     movimientos: entrada.movimientos ?? vacia.movimientos,

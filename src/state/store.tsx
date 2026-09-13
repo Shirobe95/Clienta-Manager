@@ -15,6 +15,7 @@ import type {
   Plantilla,
   Proyecto,
   Seguimiento,
+  Tarea,
 } from '../lib/types';
 
 /** Colecciones editables del documento. */
@@ -22,6 +23,7 @@ type Coleccion =
   | 'clientes'
   | 'proyectos'
   | 'cortes'
+  | 'tareas'
   | 'plantillas'
   | 'decisiones'
   | 'movimientos'
@@ -33,13 +35,15 @@ type ElementoDe<K extends Coleccion> = K extends 'clientes'
     ? Proyecto
     : K extends 'cortes'
       ? Corte
-      : K extends 'plantillas'
-        ? Plantilla
-        : K extends 'decisiones'
-          ? Decision
-          : K extends 'movimientos'
-            ? Movimiento
-            : Seguimiento;
+      : K extends 'tareas'
+        ? Tarea
+        : K extends 'plantillas'
+          ? Plantilla
+          : K extends 'decisiones'
+            ? Decision
+            : K extends 'movimientos'
+              ? Movimiento
+              : Seguimiento;
 
 interface ContextoAlmacen {
   db: BaseDatos;
@@ -142,6 +146,7 @@ export function aplicarBorrado(db: BaseDatos, coleccion: Coleccion, id: ID): Bas
       clientes: db.clientes.filter((c) => c.id !== id),
       proyectos,
       cortes: db.cortes.filter((c) => idsProyecto.has(c.proyectoId)),
+      tareas: db.tareas.filter((t) => idsProyecto.has(t.proyectoId)),
       decisiones: db.decisiones.filter((d) => idsProyecto.has(d.proyectoId)),
       movimientos: db.movimientos.filter((m) => m.clienteId !== id),
       seguimientos: db.seguimientos.filter((s) => s.clienteId !== id),
@@ -154,9 +159,10 @@ export function aplicarBorrado(db: BaseDatos, coleccion: Coleccion, id: ID): Bas
       ...db,
       proyectos: db.proyectos.filter((p) => p.id !== id),
       cortes: db.cortes.filter((c) => c.proyectoId !== id),
+      tareas: db.tareas.filter((t) => t.proyectoId !== id),
       decisiones: db.decisiones.filter((d) => d.proyectoId !== id),
       movimientos: db.movimientos.map((m) =>
-        m.proyectoId === id ? { ...m, proyectoId: undefined, corteId: undefined } : m,
+        m.proyectoId === id ? { ...m, proyectoId: undefined, corteId: undefined, tareaId: undefined } : m,
       ),
       seguimientos: db.seguimientos.map((s) =>
         s.proyectoId === id ? { ...s, proyectoId: undefined } : s,
@@ -169,7 +175,18 @@ export function aplicarBorrado(db: BaseDatos, coleccion: Coleccion, id: ID): Bas
     return {
       ...db,
       cortes: db.cortes.filter((c) => c.id !== id),
+      // Las tareas del corte no se borran: el trabajo sigue existiendo sin él.
+      tareas: db.tareas.map((t) => (t.corteId === id ? { ...t, corteId: undefined } : t)),
       movimientos: db.movimientos.map((m) => (m.corteId === id ? { ...m, corteId: undefined } : m)),
+      actualizadoEn: marca,
+    };
+  }
+
+  if (coleccion === 'tareas') {
+    return {
+      ...db,
+      tareas: db.tareas.filter((t) => t.id !== id),
+      movimientos: db.movimientos.map((m) => (m.tareaId === id ? { ...m, tareaId: undefined } : m)),
       actualizadoEn: marca,
     };
   }

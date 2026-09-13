@@ -7,6 +7,8 @@ import { hoy, sumarDias } from '../lib/format';
 import { nuevoId } from '../lib/id';
 import {
   estadosCliente,
+  estadosTarea,
+  prioridades,
   estadosCorte,
   estadosDecision,
   estadosMovimiento,
@@ -30,6 +32,7 @@ import type {
   Proyecto,
   Seguimiento,
   Suscripcion,
+  Tarea,
 } from '../lib/types';
 
 function opciones<T extends string>(m: { lista: { valor: T; texto: string }[] }) {
@@ -663,7 +666,14 @@ export function FormMovimiento({
   cortes: Corte[];
   movimientos: Movimiento[];
   ajustes: Ajustes;
-  contexto?: { clienteId?: ID; proyectoId?: ID; corteId?: ID; concepto?: string; importe?: number };
+  contexto?: {
+    clienteId?: ID;
+    proyectoId?: ID;
+    corteId?: ID;
+    tareaId?: ID;
+    concepto?: string;
+    importe?: number;
+  };
   onGuardar: (m: Movimiento) => void;
   onCerrar: () => void;
 }) {
@@ -676,10 +686,12 @@ export function FormMovimiento({
       clienteId: contexto?.clienteId ?? clientes[0]?.id,
       proyectoId: contexto?.proyectoId,
       corteId: contexto?.corteId,
+      tareaId: contexto?.tareaId,
       concepto: contexto?.concepto ?? '',
       importe: contexto?.importe ?? 0,
-      // Facturar un corte es una accion explicita: se reserva ya el numero de serie.
-      numeroFactura: contexto?.corteId ? siguienteNumeroFactura(movimientos, ajustes) : undefined,
+      // Facturar un corte o una tarea es una accion explicita: se reserva ya el numero.
+      numeroFactura:
+        contexto?.corteId || contexto?.tareaId ? siguienteNumeroFactura(movimientos, ajustes) : undefined,
       ivaPct: ajustes.ivaPorDefecto,
       irpfPct: ajustes.irpfPorDefecto,
       estado: 'pendiente',
@@ -1230,6 +1242,96 @@ export function ModalPlantilla({
           )}
         </div>
       </div>
+    </ModalFormulario>
+  );
+}
+
+/* ---------- Tarea ---------- */
+
+export function FormTarea({
+  inicial,
+  proyectoId,
+  cortes,
+  siguienteOrden,
+  onGuardar,
+  onCerrar,
+}: {
+  inicial?: Tarea;
+  proyectoId: ID;
+  cortes: Corte[];
+  siguienteOrden: number;
+  onGuardar: (t: Tarea) => void;
+  onCerrar: () => void;
+}) {
+  const [t, setT] = useState<Tarea>(
+    () =>
+      inicial ?? {
+        id: nuevoId('tar'),
+        proyectoId,
+        titulo: '',
+        estado: 'pendiente',
+        prioridad: 'normal',
+        orden: siguienteOrden,
+        creadoEn: new Date().toISOString(),
+      },
+  );
+
+  return (
+    <ModalFormulario
+      titulo={inicial ? 'Editar tarea' : 'Nueva tarea'}
+      onCerrar={onCerrar}
+      onGuardar={() => {
+        if (!t.titulo.trim()) return;
+        onGuardar(t);
+      }}
+    >
+      <Campo etiqueta="Tarea" anchoTotal>
+        <input value={t.titulo} onChange={(e) => setT({ ...t, titulo: e.target.value })} required autoFocus />
+      </Campo>
+      <Campo etiqueta="Estado">
+        <Selector valor={t.estado} opciones={opciones(estadosTarea)} onChange={(v) => setT({ ...t, estado: v })} />
+      </Campo>
+      <Campo etiqueta="Prioridad">
+        <Selector valor={t.prioridad} opciones={opciones(prioridades)} onChange={(v) => setT({ ...t, prioridad: v })} />
+      </Campo>
+      <Campo etiqueta="Cobro por esta tarea" pista="Base imponible, opcional">
+        <input
+          type="number"
+          min={0}
+          step="0.01"
+          value={t.importe ?? ''}
+          onChange={(e) => setT({ ...t, importe: e.target.value === '' ? undefined : Number(e.target.value) })}
+        />
+      </Campo>
+      <Campo etiqueta="Fecha objetivo">
+        <input
+          type="date"
+          value={t.fechaObjetivo ?? ''}
+          onChange={(e) => setT({ ...t, fechaObjetivo: e.target.value || undefined })}
+        />
+      </Campo>
+      {cortes.length > 0 && (
+        <Campo etiqueta="Corte" pista="Opcional: agrupa la tarea dentro de un corte">
+          <Selector
+            valor={t.corteId ?? ''}
+            opciones={[
+              { valor: '', texto: 'Sin corte' },
+              ...cortes.map((c) => ({ valor: c.id, texto: `${c.codigo} · ${c.titulo}` })),
+            ]}
+            onChange={(v) => setT({ ...t, corteId: v || undefined })}
+          />
+        </Campo>
+      )}
+      <Campo etiqueta="Subida el" pista="Se rellena sola al marcarla como subida">
+        <input
+          type="date"
+          value={t.fechaSubida ?? ''}
+          onChange={(e) => setT({ ...t, fechaSubida: e.target.value || undefined })}
+        />
+      </Campo>
+      <Campo etiqueta="Detalle" anchoTotal>
+        <textarea value={t.detalle ?? ''} onChange={(e) => setT({ ...t, detalle: e.target.value })} rows={4} />
+      </Campo>
     </ModalFormulario>
   );
 }

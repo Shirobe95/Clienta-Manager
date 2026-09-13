@@ -20,11 +20,14 @@ import { useFormato } from '../state/formato';
 import { useAlmacen } from '../state/store';
 import { FormMovimiento } from '../components/formularios';
 import { conceptoDeCorte, cortesSinFacturar } from '../lib/facturacion';
+import { conceptoDeTarea, tareasEnCurso, tareasSinFacturar } from '../lib/tareas';
+import type { TareaSinFacturar } from '../lib/tareas';
 import { resumenEntregas } from '../lib/entregas';
 import { estadoCopia } from '../lib/copias';
 import { mensualidadesPendientes, movimientoDeMensualidad, recurrenteMensual } from '../lib/suscripciones';
 import type { MensualidadPendiente } from '../lib/suscripciones';
 import type { CorteSinFacturar } from '../lib/facturacion';
+import { estadosTarea } from '../lib/labels';
 
 const SERIES: SerieGrafico[] = [
   { clave: 'cobrado', texto: 'Cobrado', color: 'var(--serie-cobrado)' },
@@ -35,6 +38,7 @@ const SERIES: SerieGrafico[] = [
 export function Dashboard() {
   const { db, guardar } = useAlmacen();
   const [facturando, setFacturando] = useState<CorteSinFacturar | null>(null);
+  const [facturandoTarea, setFacturandoTarea] = useState<TareaSinFacturar | null>(null);
   const { dinero, fecha: fmtFecha, moneda, locale } = useFormato();
   const fecha = hoy();
 
@@ -44,6 +48,8 @@ export function Dashboard() {
   const agenda = seguimientosProximos(db, fecha, 45).slice(0, 6);
   const ranking = rankingClientes(db, fecha, 5);
   const sinFacturar = cortesSinFacturar(db);
+  const enCurso = tareasEnCurso(db);
+  const tareasPorFacturar = tareasSinFacturar(db);
   const entregas = resumenEntregas(db, fecha);
   const mensualidades = mensualidadesPendientes(db, fecha);
   const recurrente = recurrenteMensual(db, fecha);
@@ -164,6 +170,81 @@ export function Dashboard() {
             }
           />
         </div>
+
+        {enCurso.length > 0 && (
+          <Panel
+            titulo="En qué estoy trabajando"
+            icono="rayo"
+            sinRelleno
+            pie={
+              <div className="panel-cuerpo pequeno texto-3" style={{ borderTop: '1px solid var(--borde)' }}>
+                {db.tareas.filter((t) => t.estado === 'pendiente').length} tareas más esperando turno.
+              </div>
+            }
+          >
+            <div className="lista">
+              {enCurso.map(({ tarea, proyecto, cliente }) => (
+                <div className="lista-item" key={tarea.id}>
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: 99,
+                      flex: 'none',
+                      background: tarea.prioridad === 'alta' ? 'var(--critico)' : 'var(--acento)',
+                    }}
+                  />
+                  <div className="crecer">
+                    <div className="titulo recorte">{tarea.titulo}</div>
+                    <div className="meta recorte">
+                      <Link to={`/proyectos/${proyecto.id}`}>{proyecto.nombre}</Link>
+                      {cliente ? ` · ${cliente.nombre}` : ''}
+                      {tarea.fechaObjetivo ? ` · objetivo ${fmtFecha(tarea.fechaObjetivo)}` : ''}
+                    </div>
+                  </div>
+                  {tarea.importe ? <span className="num">{dinero(tarea.importe)}</span> : null}
+                </div>
+              ))}
+            </div>
+          </Panel>
+        )}
+
+        {tareasPorFacturar.length > 0 && (
+          <Panel
+            titulo="Tareas subidas pendientes de facturar"
+            icono="aviso"
+            sinRelleno
+            pie={
+              <div className="panel-cuerpo pequeno texto-3" style={{ borderTop: '1px solid var(--borde)' }}>
+                Total sin facturar:{' '}
+                <strong className="num texto-2">
+                  {dinero(tareasPorFacturar.reduce((suma, x) => suma + (x.tarea.importe ?? 0), 0))}
+                </strong>
+              </div>
+            }
+          >
+            <div className="lista">
+              {tareasPorFacturar.map((x) => (
+                <div className="lista-item" key={x.tarea.id}>
+                  <Insignia texto={estadosTarea.de('subida').texto} tono="ok" />
+                  <div className="crecer">
+                    <div className="titulo recorte">{x.tarea.titulo}</div>
+                    <div className="meta recorte">
+                      <Link to={`/proyectos/${x.proyecto.id}`}>{x.proyecto.nombre}</Link>
+                      {x.cliente ? ` · ${x.cliente.nombre}` : ''}
+                      {x.tarea.fechaSubida ? ` · subida ${fmtFecha(x.tarea.fechaSubida)}` : ''}
+                    </div>
+                  </div>
+                  <span className="num">{dinero(x.tarea.importe ?? 0)}</span>
+                  <button type="button" className="btn pequeno" onClick={() => setFacturandoTarea(x)}>
+                    <Icono nombre="cobros" />
+                    Facturar
+                  </button>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        )}
 
         {mensualidades.length > 0 && (
           <Panel
@@ -403,6 +484,33 @@ export function Dashboard() {
           </Panel>
         </div>
       </div>
+
+      {facturandoTarea && (
+        <FormMovimiento
+          clientes={db.clientes}
+          proyectos={db.proyectos}
+          cortes={db.cortes}
+          movimientos={db.movimientos}
+          ajustes={db.ajustes}
+          contexto={{
+            clienteId: facturandoTarea.cliente?.id,
+            proyectoId: facturandoTarea.proyecto.id,
+            corteId: facturandoTarea.tarea.corteId,
+            tareaId: facturandoTarea.tarea.id,
+            concepto: conceptoDeTarea(
+              facturandoTarea.proyecto,
+              facturandoTarea.tarea,
+              db.cortes.find((c) => c.id === facturandoTarea.tarea.corteId),
+            ),
+            importe: facturandoTarea.tarea.importe,
+          }}
+          onCerrar={() => setFacturandoTarea(null)}
+          onGuardar={(m) => {
+            guardar('movimientos', m);
+            setFacturandoTarea(null);
+          }}
+        />
+      )}
 
       {facturando && (
         <FormMovimiento

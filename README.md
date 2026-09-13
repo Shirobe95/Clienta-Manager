@@ -9,6 +9,9 @@ trabajo freelance. Todo vive en el navegador (local-first), sin servidor ni cuen
 - **Mensualidades**: opcionales, cliente a cliente. Cada mes vencido aparece como cuota por emitir y se
   convierte en un cobro numerado con un clic.
 - **Proyectos**: visión general, modelo de facturación, presupuesto, enlaces y avance real.
+- **Tareas**: el trabajo del día a día dentro de un proyecto, cada una con su cobro. Van avanzando
+  pendiente → desarrollando → completada → subida, y el panel muestra en qué estás trabajando ahora
+  mismo en todos los proyectos a la vez.
 - **Cortes**: bloques de trabajo acotados, con objetivo, *fuera de alcance*, criterios de aceptación,
   precio y fecha de entrega real. Son la unidad de venta: se cobra por módulo entregado.
 - **Plantillas**: catálogo de módulos reutilizables con precio y criterios, para montar un proyecto
@@ -58,7 +61,7 @@ Para ver el panel con contenido: **Ajustes → Cargar datos de ejemplo**.
 
 ```
 src/
-  lib/        modelo, formato, metricas, facturacion, entregas, suscripciones, copias, ejemplo
+  lib/        modelo, formato, metricas, facturacion, entregas, tareas, suscripciones, copias, ejemplo
   state/      contexto de React sobre el documento local (CRUD + borrado en cascada)
   components/ sistema de UI (paneles, KPIs, tablas, formularios, grafico)
   pages/      una vista por seccion del panel
@@ -97,6 +100,14 @@ Decisiones que conviene conocer antes de tocar el código:
 - **La fecha de entrega se apunta sola, pero no manda.** Pasar un corte a revisión o aceptado escribe la
   fecha de entrega si está vacía, y la retira si el corte vuelve atrás; una fecha puesta a mano nunca se
   pisa. La puntualidad solo cuenta los cortes que tienen fecha objetivo *y* fecha de entrega.
+- **Tarea y corte no son lo mismo.** El corte es alcance vendido, con criterios de aceptación y fecha de
+  entrega; la tarea es un encargo concreto que se hace y se sube. Un proyecto puede llevar solo tareas
+  (mantenimiento evolutivo), solo cortes (obra cerrada) o las dos cosas, colgando cada tarea de su
+  corte. Por eso el importe de las tareas va aparte del cuadre por módulos: son dos formas distintas de
+  facturar y mezclarlas daría un total sin sentido.
+- **"Subida" no es "completada".** Completada es que el trabajo está hecho; subida es que el cliente ya
+  lo tiene. Solo lo subido cuenta como pendiente de facturar, y la fecha de subida se apunta sola al
+  llegar a ese estado, igual que la de entrega de un corte.
 - **El presupuesto no se recalcula solo.** `cuadreProyecto` compara lo pactado con la suma de los módulos
   y con lo facturado, y avisa si difieren en más de un euro (por debajo es redondeo). Decides tú si el que
   cambia es el presupuesto o el precio de un módulo.
@@ -129,5 +140,6 @@ destrozo, pero viven en el mismo sitio que los datos: no son una copia de seguri
 ranking, vencimientos, avance), facturación (numeración, huecos y duplicados, cortes sin facturar, CSV y
 recordatorios), entregas (fecha automática, puntualidad, cuadre de presupuesto, plantillas y
 ampliaciones) y suscripciones (vigencia, periodos pendientes, generación de cuotas y recurrente
-mensual) y copias (estado del aviso, fusión, instantáneas). La UI no tiene tests automatizados
-todavía; se verifica a mano en el navegador.
+mensual), copias (estado del aviso, fusión, instantáneas) y tareas (flujo de estados, agrupación,
+resumen, trabajo en curso y sin facturar). La UI no tiene tests automatizados todavía; se verifica a
+mano en el navegador.

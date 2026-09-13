@@ -1,6 +1,6 @@
 # Roadmap
 
-Estado: **C1 a C5 entregados**. Lo demás son propuestas, no compromisos.
+Estado: **C1 a C6 entregados**. Lo demás son propuestas, no compromisos.
 
 ## C1 — Panel base (hecho)
 
@@ -65,7 +65,21 @@ como forma de moverse entre equipos.
 - Barra de navegación en móvil: una sola fila de 67 px en vez de tres, y sin desbordes en ninguna vista.
 - Estado vacío en el gráfico del panel cuando todavía no hay movimientos.
 
-## C6 — Portal y automatización
+## C6 — Tareas dentro del proyecto (hecho)
+
+El trabajo del día a día no cabía en los cortes: un corte es alcance vendido con criterios de
+aceptación, y hacía falta algo más ligero para "esto hay que hacerlo y cuesta X".
+
+- Entidad `Tarea` por proyecto: título, detalle, precio, prioridad, fecha objetivo y, opcionalmente,
+  el corte al que pertenece.
+- Flujo pendiente → desarrollando → completada → subida, con avance en un clic y estado "cancelada"
+  para descartar sin borrar. La fecha de subida se apunta sola.
+- Pestaña Tareas como vista por defecto del proyecto, agrupada por estado, con las prioridades altas
+  arriba y las cerradas plegadas.
+- En el panel: "En qué estoy trabajando" con las tareas en curso de todos los proyectos, y las tareas
+  subidas pendientes de facturar, con su botón para crear el cobro.
+
+## C7 — Portal y automatización
 
 - Vista pública por proyecto para el cliente: estado de cortes y criterios aceptados.
 - Recordatorios por correo de vencimientos y renovaciones.

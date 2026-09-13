@@ -63,6 +63,7 @@ export function TablaMovimientos({
             const cliente = db.clientes.find((c) => c.id === m.clienteId);
             const proyecto = db.proyectos.find((p) => p.id === m.proyectoId);
             const corte = db.cortes.find((c) => c.id === m.corteId);
+            const tarea = db.tareas.find((t) => t.id === m.tareaId);
             return (
               <tr key={m.id}>
                 <td>
@@ -73,6 +74,7 @@ export function TablaMovimientos({
                     <span className={m.tipo === 'pago' ? 'texto-2' : undefined}>{m.concepto}</span>
                     {m.tipo === 'pago' && <span className="etiqueta">Gasto</span>}
                     {corte && <span className="etiqueta mono">{corte.codigo}</span>}
+                    {tarea && <span className="etiqueta">Tarea</span>}
                   </div>
                   {m.numeroFactura && <div className="pequeno texto-3 mono">{m.numeroFactura}</div>}
                 </td>
